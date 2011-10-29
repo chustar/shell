@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+int load_vars();
+int set_var(char *);
+
 int load_vars() {
 	FILE *fp;
 	char *contents;
@@ -15,12 +18,19 @@ int load_vars() {
 	
 	contents = (char*) malloc(sizeof(char) * block_size);
 	while(getline(&contents, &block_size, fp) != -1) {
-		res = putenv(contents);
+		res = set_var(contents);
 	}
 	return res;		
 }
 
+int set_var(char *var) {
+	int res;
+	res = putenv(var);
+}
 
+
+#ifdef UNITTEST
 int main() {
 	return load_vars();
 }
+#endif

@@ -8,19 +8,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "vars.c"
+#include "var.c"
 
 #define EXIT 0
 #define QUIT "quit\n"
 //#define DEBUG 0 
 
-void main() {
+int main() {
 	int pid;		//holds pid number
 	char input[4000];	//gets line input
 	char *cmdArg[100];	//get argument to pass to execvp
 	int i,j;		//for loop counters
 	char *token;		//use to hold tokens
 
+	/*
+	Load user specified variables into environment map
+	*/
 	load_vars();
 
 	/*
@@ -35,6 +38,7 @@ void main() {
 	}
 	wait(pid);
 
+	//sigh...
 	printf("It's Easy as Pie!\n");
 	printf("Pie > ");
 	fgets(input, sizeof input, stdin);
@@ -46,16 +50,20 @@ void main() {
 		token = strtok(input, " \n");
 		i = 0;
 		cmdArg[i] = token;
+
+		//while this is not the last token
 		while(token != NULL) {
 			token = strtok(NULL, " \n");
 			cmdArg[++i] = token;
 		}
 		cmdArg[++i] = NULL;
 	
+		//fork the process here to run the new shell
 		pid = fork();
 		if(pid < 0)
 			printf("Fork Error!\n");
 		else if(pid == 0) {
+			//maybe change to our own function called parse_exec to parse and execute?
 			execvp(cmdArg[0], cmdArg);
 			exit(0);
 		} else {
@@ -65,5 +73,5 @@ void main() {
 		}
 	
 	}
-	return;	
+	return 0;	
 }
