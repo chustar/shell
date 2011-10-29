@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "vars.c"
 
 #define EXIT 0
 #define QUIT "quit\n"
@@ -19,6 +20,8 @@ void main() {
 	char *cmdArg[100];	//get argument to pass to execvp
 	int i,j;		//for loop counters
 	char *token;		//use to hold tokens
+
+	load_vars();
 
 	/*
 	Clear Screen for the Pie Shell
