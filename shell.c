@@ -16,6 +16,7 @@
 
 int main() {
 	pid_t pid;		//holds pid number
+	int status;
 	char input[4000];	//gets line input
 	char *cmdArg[100];	//get argument to pass to execvp
 	int i,j, status;		//for loop counters
