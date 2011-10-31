@@ -9,16 +9,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include "var.c"
-
+#include "parse_exec.c"
 #define EXIT 0
 #define QUIT "quit\n"
 //#define DEBUG 0 
 
 int main() {
-	int pid;		//holds pid number
+	pid_t pid;		//holds pid number
 	char input[4000];	//gets line input
 	char *cmdArg[100];	//get argument to pass to execvp
-	int i,j;		//for loop counters
+	int i,j, status;		//for loop counters
 	char *token;		//use to hold tokens
 
 	/*
@@ -36,7 +36,7 @@ int main() {
 		execlp("clear", NULL, NULL);
 		exit(0);
 	}
-	wait(pid);
+	wait(&status);
 
 	//sigh...
 	printf("It's Easy as Pie!\n");
@@ -64,14 +64,13 @@ int main() {
 			printf("Fork Error!\n");
 		else if(pid == 0) {
 			//maybe change to our own function called parse_exec to parse and execute?
-			execvp(cmdArg[0], cmdArg);
+			parse_exec(cmdArg);
 			exit(0);
 		} else {
-			wait(pid);
+			wait(&status);
 			printf("Pie > ");
 			fgets(input, sizeof input, stdin);
 		}
-	
 	}
 	return 0;	
 }

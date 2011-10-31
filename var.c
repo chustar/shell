@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifndef VAR_C
+#define VAR_C
 int load_vars();
 int set_var(char *);
 
@@ -15,11 +17,13 @@ int load_vars() {
 		fprintf(stderr, "File not yet created...\n");
 		return 1;
 	}
-	
+
+	//read and execute every line of the file as an envirnoment var set
 	contents = (char*) malloc(sizeof(char) * block_size);
 	while(getline(&contents, &block_size, fp) != -1) {
 		res = set_var(contents);
 	}
+	fclose(fp);
 	return res;		
 }
 
@@ -33,4 +37,5 @@ int set_var(char *var) {
 int main() {
 	return load_vars();
 }
+#endif
 #endif
