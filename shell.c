@@ -15,7 +15,8 @@
 //#define DEBUG 0 
 
 int main() {
-	int pid;		//holds pid number
+	pid_t pid;		//holds pid number
+	int status;
 	char input[4000];	//gets line input
 	char *cmdArg[100];	//get argument to pass to execvp
 	int i,j;		//for loop counters
@@ -36,7 +37,7 @@ int main() {
 		execlp("clear", NULL, NULL);
 		exit(0);
 	}
-	wait(pid);
+	wait(&status);
 
 	//sigh...
 	printf("It's Easy as Pie!\n");
@@ -67,7 +68,7 @@ int main() {
 			execvp(cmdArg[0], cmdArg);
 			exit(0);
 		} else {
-			wait(pid);
+			wait(&status);
 			printf("Pie > ");
 			fgets(input, sizeof input, stdin);
 		}
