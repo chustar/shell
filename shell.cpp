@@ -8,15 +8,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "var.c"
-#include "parse_exec.c"
+#include "var.h"
+
 #define EXIT 0
 #define QUIT "quit\n"
 //#define DEBUG 0 
 
 int main() {
 	pid_t pid;		//holds pid number
-	int status;
 	char input[4000];	//gets line input
 	char *cmdArg[100];	//get argument to pass to execvp
 	int i,j, status;		//for loop counters
@@ -65,7 +64,7 @@ int main() {
 			printf("Fork Error!\n");
 		else if(pid == 0) {
 			//maybe change to our own function called parse_exec to parse and execute?
-			parse_exec(cmdArg);
+			execvp(cmdArg[0], cmdArg);
 			exit(0);
 		} else {
 			wait(&status);
