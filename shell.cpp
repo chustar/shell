@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "var.h"
-
+using namespace std;
 #define EXIT 0
 #define QUIT "quit\n"
 //#define DEBUG 0 
@@ -25,7 +25,6 @@ int main() {
 	Load user specified variables into environment map
 	*/
 	load_vars();
-
 	/*
 	Clear Screen for the Pie Shell
 	*/

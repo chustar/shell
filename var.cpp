@@ -12,22 +12,32 @@ int load_vars() {
 	ifstream file;
 	file.open(".sh142", ios::in);
 	if (file.bad()) {
-		fprintf(stderr, "File not yet created...\n");
+		cerr << "File not yet created...\n";
 		return 1;
 	}
 
-	string line;
+	string name;
+	string value;
 	while(file.good()) {
-		getline(file, line);
-		res = set_var(line.c_str());
+		getline(file, name, '=');
+		if(file.good()) {
+			getline(file, value);
+			res = set_var(name, value);
+		}	
 	}
 	file.close();
 	return res;		
 }
 
-int set_var(const char *var) {
+string get_var(string name) {
+	char *res = getenv(name.c_str());
+	if(res != NULL) return string(res);
+	else cerr << name << " failed" << endl;
+}
+
+int set_var(string name, string value) {
 	int res;
-	res = putenv((char*)var);
-	cout << var << " failed" << endl;
+	res = setenv(name.c_str(), value.c_str(), 1);
+	if (res < 0) cout << name << "&" << value << " failed" << endl;
 }
 #endif
