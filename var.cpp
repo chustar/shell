@@ -1,12 +1,16 @@
 #include <iostream>
 #include <fstream>
 #include <stdlib.h>
-#include "var.h"
 
 #ifndef VAR_CPP
 #define VAR_CPP
 
 using namespace std;
+
+int load_vars();
+string get_var(string);
+int set_var(string, string);
+
 int load_vars() {
 	int res;
 	ifstream file;

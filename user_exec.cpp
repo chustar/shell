@@ -1,10 +1,13 @@
 #include <iostream>
 #include <vector>
-#include "user_exec.h"
 
 using namespace std;
 
-int negate = false;
+int user_exec(vector<string>, vector<char>);
+bool token_exec(vector<string>::iterator, vector<char>::iterator);
+int fork_exec_bg(string);
+bool resolve_exec(int);
+
 int last_res = 0;
 
 int user_exec(vector<string> cmd, vector<char> types) {
