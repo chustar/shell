@@ -17,10 +17,10 @@ int main() {
 	while (file.good()) {
 		getline(file, cmd);
 		if(file.eof()) break;
-		getline(file, type);
+        getline(file, type);
 		cmds.push_back(cmd);
 		types.push_back(type[0]);
-	}	
+	}
 	file.close();
-	user_exec(cmds, types);	
+	user_exec(cmds, types);
 }

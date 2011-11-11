@@ -20,11 +20,10 @@ int user_exec(vector<string> cmd, vector<char> types) {
 			token_exec(cmdIter, typeIter);
 		} else if(*typeIter == 'C') {
 			fork_exec_bg(*cmdIter);
-		} else {
-			resolve_exec();
 		}
 	}
-	resolve_exec();
+	waitpid(child, &last_res, 0);
+	return WEXITSTATUS(last_res);
 }
 
 bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeIter) {
@@ -46,17 +45,26 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 //			if (neg && WIFEXITED(res)) last_res = 1;
 //			neg = false;
 //		}
-		if ((neg && !WIFEXITED(res)) || WIFEXITED(res)) {
+		if(neg) {
+			if (res > 0) res = 0;
+			else if (res == 0) res = 1;
+		}
+		if (res == 0) {
 			cout << "Executing: &&: Next" << endl;
 			if (*cmdIter == "!") {
 				cmdIter++;
 				typeIter++;
 				fork_exec_bg(*cmdIter);
-				if (res > 0) last_res = 0;
-				if (res == 0) last_res = 1;
 			} else {
 				fork_exec_bg(*cmdIter);
 			}
+		} else {
+			if (*cmdIter == "!") {
+				cmdIter++;
+				typeIter++;
+			}
+			cmdIter++;
+			typeIter++;
 		}
 		neg = false;
 	} else if(*cmdIter == "||") {

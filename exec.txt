@@ -2,6 +2,10 @@ ls
 C
 &&
 T
-cat .sh142
+cat exec.txt
+C
+&&
+T
+ls ..
 C
 go
