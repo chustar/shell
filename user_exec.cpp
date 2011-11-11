@@ -4,14 +4,14 @@
 using namespace std;
 
 int user_exec(vector<string>, vector<char>);
-bool token_exec(vector<string>::iterator, vector<char>::iterator);
+bool token_exec(vector<string>::iterator &, vector<char>::iterator &);
 int fork_exec_bg(string);
 bool resolve_exec(int);
 
+int child = 0;
 int last_res = 0;
 
 int user_exec(vector<string> cmd, vector<char> types) {
-	int child = 0;
 	vector<string>::iterator cmdIter;
 	vector<char>::iterator typeIter;
 	for(cmdIter = cmd.begin(), typeIter = types.begin(); cmdIter < cmd.end(); ++cmdIter, ++typeIter) {
@@ -26,7 +26,7 @@ int user_exec(vector<string> cmd, vector<char> types) {
 	resolve_exec(child);
 }
 
-bool token_exec(vector<string>::iterator cmdIter, vector<char>::iterator typeIter) {
+bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeIter) {
 	int res = 0;
 	if(*cmdIter == "!") {
 		cmdIter++;
@@ -34,10 +34,13 @@ bool token_exec(vector<string>::iterator cmdIter, vector<char>::iterator typeIte
 		res = fork_exec_bg(*cmdIter);
 		if (res > 0) last_res = 0;
 		if (res == 0) last_res = 1;
+		cout << "Executing: !" << endl;
 	} else if(*cmdIter == "&&") {
+		cout << "Executing: &&" << endl;
 		cmdIter++;
 		typeIter++;
 		if (last_res == 0) {
+			cout << "Executing: &&: Next" << endl;
 			if (*cmdIter == "!") {
 				cmdIter++;
 				typeIter++;
@@ -53,8 +56,25 @@ bool token_exec(vector<string>::iterator cmdIter, vector<char>::iterator typeIte
 	}
 }
 
-int fork_exec_bg(string v) {
+int fork_exec_bg(string cmd) {
+	cout << "Executing: " << cmd << endl;
+	child = fork();
+	if(child > 0) {
+		char *input = (char*)cmd.c_str();
+		char *cmdArg[100];
+		char *token = strtok(input, " \n");
+		int i = 0;
+		cmdArg[i] = token;
 
+		//while this is not the last token
+		while(token != NULL) {
+			token = strtok(NULL, " \n");
+			cmdArg[++i] = token;
+		}
+		cmdArg[++i] = NULL;
+		
+		execvp(cmdArg[0], cmdArg);
+	}
 }
 
 bool resolve_exec(int child) {
