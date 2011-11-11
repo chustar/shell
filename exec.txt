@@ -1,0 +1,7 @@
+ls
+C
+&&
+T
+cat .sh142
+C
+go

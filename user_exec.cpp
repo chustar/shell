@@ -5,11 +5,12 @@ using namespace std;
 
 int user_exec(vector<string>, vector<char>);
 bool token_exec(vector<string>::iterator &, vector<char>::iterator &);
-int fork_exec_bg(string);
-bool resolve_exec(int);
+void fork_exec_bg(string);
+bool resolve_exec();
 
-int child = 0;
+pid_t child = 0;
 int last_res = 0;
+bool neg = false;
 
 int user_exec(vector<string> cmd, vector<char> types) {
 	vector<string>::iterator cmdIter;
@@ -18,48 +19,55 @@ int user_exec(vector<string> cmd, vector<char> types) {
 		if(*typeIter == 'T') {
 			token_exec(cmdIter, typeIter);
 		} else if(*typeIter == 'C') {
-			child = fork_exec_bg(*cmdIter);
+			fork_exec_bg(*cmdIter);
 		} else {
-			resolve_exec(child);
+			resolve_exec();
 		}
 	}
-	resolve_exec(child);
+	resolve_exec();
 }
 
 bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeIter) {
 	int res = 0;
 	if(*cmdIter == "!") {
-		cmdIter++;
-		typeIter++;
-		res = fork_exec_bg(*cmdIter);
-		if (res > 0) last_res = 0;
-		if (res == 0) last_res = 1;
 		cout << "Executing: !" << endl;
+		neg = true;
 	} else if(*cmdIter == "&&") {
 		cout << "Executing: &&" << endl;
 		cmdIter++;
 		typeIter++;
-		if (last_res == 0) {
+		//check the currently backgrounded app
+//		if(child != 0) {
+			waitpid(child, &res, 0);
+//			res = WEXITSTATUS(res);
+//			last_res = res;
+			cout << res << endl;
+//			if (neg && !WIFEXITED(res)) last_res = 0;
+//			if (neg && WIFEXITED(res)) last_res = 1;
+//			neg = false;
+//		}
+		if ((neg && !WIFEXITED(res)) || WIFEXITED(res)) {
 			cout << "Executing: &&: Next" << endl;
 			if (*cmdIter == "!") {
 				cmdIter++;
 				typeIter++;
-				res = fork_exec_bg(*cmdIter);
+				fork_exec_bg(*cmdIter);
 				if (res > 0) last_res = 0;
 				if (res == 0) last_res = 1;
 			} else {
-				last_res = fork_exec_bg(*cmdIter);
+				fork_exec_bg(*cmdIter);
 			}
 		}
+		neg = false;
 	} else if(*cmdIter == "||") {
 
 	}
 }
 
-int fork_exec_bg(string cmd) {
+void fork_exec_bg(string cmd) {
 	cout << "Executing: " << cmd << endl;
 	child = fork();
-	if(child > 0) {
+	if(child == 0) {
 		char *input = (char*)cmd.c_str();
 		char *cmdArg[100];
 		char *token = strtok(input, " \n");
@@ -74,10 +82,10 @@ int fork_exec_bg(string cmd) {
 		cmdArg[++i] = NULL;
 		
 		execvp(cmdArg[0], cmdArg);
-	}
+	} 
 }
 
-bool resolve_exec(int child) {
+bool resolve_exec() {
 	if(child != 0) {
 /*
 		switch(exec_env) {
