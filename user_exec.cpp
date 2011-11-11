@@ -1,19 +1,21 @@
 #include <iostream>
+#include <vector>
+#include "user_exec.h"
 
 using namespace std;
 
 int negate = false;
 int last_res = 0;
 
-int user_exec(vector<string> var), vector<char> types {
+int user_exec(vector<string> cmd, vector<char> types) {
 	int child = 0;
-	for(int i = 0; i < var.length(); i++) {
-		if(types[i] == 'T') {
-			resolve_exec();
-			set_exec(var);
-			i++;
-		} else if(is_cmd(var[i])) {
-			child = fork_exec_bg(var[i].str);
+	vector<string>::iterator cmdIter;
+	vector<char>::iterator typeIter;
+	for(cmdIter = cmd.begin(), typeIter = types.begin(); cmdIter < cmd.end(); ++cmdIter, ++typeIter) {
+		if(*typeIter == 'T') {
+			token_exec(cmdIter, typeIter);
+		} else if(*typeIter == 'C') {
+			child = fork_exec_bg(*cmdIter);
 		} else {
 			resolve_exec(child);
 		}
@@ -21,65 +23,40 @@ int user_exec(vector<string> var), vector<char> types {
 	resolve_exec(child);
 }
 
-bool is_token(string v) {
-	
-}
-
-bool set_exec(vector<string> var, vector<char> types, int i) {
+bool token_exec(vector<string>::iterator cmdIter, vector<char>::iterator typeIter) {
 	int res = 0;
-		switch(types[i]) {
-			case NOT:
-				res = fork_exec_bg(var[i++]);
-				if (res > 0) last_res  = 0;
+	if(*cmdIter == "!") {
+		cmdIter++;
+		typeIter++;
+		res = fork_exec_bg(*cmdIter);
+		if (res > 0) last_res = 0;
+		if (res == 0) last_res = 1;
+	} else if(*cmdIter == "&&") {
+		cmdIter++;
+		typeIter++;
+		if (last_res == 0) {
+			if (*cmdIter == "!") {
+				cmdIter++;
+				typeIter++;
+				res = fork_exec_bg(*cmdIter);
+				if (res > 0) last_res = 0;
 				if (res == 0) last_res = 1;
-			break;
-			case AND:
-				if (last_res	
-			break;
-			case OR:
-
-			break;
-			case STREAM_IN:
-
-			break;
-			case STREAM_OUT:
-
-			break;
-			case STREAM_ERR:
-
-			break;
-			case PIPE:
-
-			break;
-			case BACKGROUND:
-
-			break;
-		}
-	switch(v.type) {
-		case NOT:
-			negate = false;
-		break;
-		case AND:
-			res = wait(child);
-			if (res == 0 || negate) {
-				
-			} else if(res != 0 || negate) {
-
+			} else {
+				last_res = fork_exec_bg(*cmdIter);
 			}
-		break;
-		case OR:
+		}
+	} else if(*cmdIter == "||") {
 
-		break;
-		
 	}
 }
 
-int fork_exec_bg(string v, char type) {
+int fork_exec_bg(string v) {
 
 }
 
 bool resolve_exec(int child) {
 	if(child != 0) {
+/*
 		switch(exec_env) {
 			case AND:
 
@@ -103,5 +80,6 @@ bool resolve_exec(int child) {
 
 			break;
 		}
+*/
 	}
 }
