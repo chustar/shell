@@ -2,9 +2,9 @@ ls
 C
 &&
 T
-cat exec.txt
+cat s.sh142
 C
-&&
+||
 T
 ls ..
 C

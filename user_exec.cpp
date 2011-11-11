@@ -28,36 +28,55 @@ int user_exec(vector<string> cmd, vector<char> types) {
 
 bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeIter) {
 	int res = 0;
-	if(*cmdIter == "!") {
+	//set the negation if the command is !
+    if(*cmdIter == "!") {
 		cout << "Executing: !" << endl;
 		neg = true;
+    //handle AND condition.
 	} else if(*cmdIter == "&&") {
 		cout << "Executing: &&" << endl;
+        cmdIter++;                                      //look ahead to the next command
+		typeIter++;                                     //look ahead to the next type
+        waitpid(child, &res, 0);                        //check the status of the last run command
+		if(neg) {                                       //flip the response of the last command if negate was set.
+			if (res > 0) res = 0;
+			else if (res == 0) res = 1;
+            neg = false;
+		}
+		if (res == 0) {                                 //if the last guy worked, execute it and leave it in the background
+			cout << "Executing: &&: Next" << endl;
+			if (*cmdIter == "!") {                      //handle a not condition before the next line
+				cmdIter++;
+				typeIter++;
+                neg = true;
+            }
+            fork_exec_bg(*cmdIter);
+		} else {                                        //if the command before and "failed" then ignore the next command (including its associated !
+			if (*cmdIter == "!") {
+				cmdIter++;
+				typeIter++;
+			}
+			cmdIter++;
+			typeIter++;
+		}
+	} else if(*cmdIter == "||"){
+		cout << "Executing: ||" << endl;
 		cmdIter++;
 		typeIter++;
-		//check the currently backgrounded app
-//		if(child != 0) {
-			waitpid(child, &res, 0);
-//			res = WEXITSTATUS(res);
-//			last_res = res;
-			cout << res << endl;
-//			if (neg && !WIFEXITED(res)) last_res = 0;
-//			if (neg && WIFEXITED(res)) last_res = 1;
-//			neg = false;
-//		}
+        waitpid(child, &res, 0);
+        cout << res << endl;
 		if(neg) {
 			if (res > 0) res = 0;
 			else if (res == 0) res = 1;
 		}
-		if (res == 0) {
-			cout << "Executing: &&: Next" << endl;
+		if (res != 0) {
+			cout << "Executing: ||: Next" << endl;
 			if (*cmdIter == "!") {
 				cmdIter++;
 				typeIter++;
-				fork_exec_bg(*cmdIter);
-			} else {
-				fork_exec_bg(*cmdIter);
+                neg = true;
 			}
+			fork_exec_bg(*cmdIter);
 		} else {
 			if (*cmdIter == "!") {
 				cmdIter++;
@@ -67,7 +86,7 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 			typeIter++;
 		}
 		neg = false;
-	} else if(*cmdIter == "||") {
+	} else if(*cmdIter == "|") {
 
 	}
 }
@@ -88,9 +107,9 @@ void fork_exec_bg(string cmd) {
 			cmdArg[++i] = token;
 		}
 		cmdArg[++i] = NULL;
-		
+
 		execvp(cmdArg[0], cmdArg);
-	} 
+	}
 }
 
 bool resolve_exec() {
