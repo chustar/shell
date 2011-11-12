@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <fstream>
 
 using namespace std;
 
@@ -92,14 +93,16 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 		cmdIter++;
 		typeIter++;
 
-        fstream fout;
-        fout.open((*cmdIter).c_str(), ios_base::app);
         long lSize = 1000;
         char * buffer;
         buffer = new char[lSize];
         close(fds[1]);
         int len = read(fds[0], buffer, lSize);
-        fout.write(buffer, len);
+        string out(buffer);
+
+        ofstream fout((*cmdIter).c_str(), ios_base::trunc);
+        fout << out;
+
         fout.close();
         delete [] buffer;
 
