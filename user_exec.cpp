@@ -11,6 +11,7 @@ bool resolve_exec();
 pid_t child = 0;
 int last_res = 0;
 bool neg = false;
+int fds[2];
 
 int user_exec(vector<string> cmd, vector<char> types) {
 	vector<string>::iterator cmdIter;
@@ -86,6 +87,23 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 			typeIter++;
 		}
 		neg = false;
+	} else if(*cmdIter == ">>"){
+        cout << "Executing: >>" << endl;
+		cmdIter++;
+		typeIter++;
+
+        fstream fout;
+        fout.open((*cmdIter).c_str(), ios_base::app);
+        long lSize = 1000;
+        char * buffer;
+        buffer = new char[lSize];
+        close(fds[1]);
+        int len = read(fds[0], buffer, lSize);
+        fout.write(buffer, len);
+        fout.close();
+        delete [] buffer;
+
+        waitpid(child, &res, 0);
 	} else if(*cmdIter == "|") {
 
 	}
@@ -93,9 +111,12 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 
 void fork_exec_bg(string cmd) {
 	cout << "Executing: " << cmd << endl;
+    pipe(fds);
 	child = fork();
-	if(child == 0) {
-		char *input = (char*)cmd.c_str();
+    if(child == 0) {
+//        close(fds[1]);
+
+        char *input = (char*)cmd.c_str();
 		char *cmdArg[100];
 		char *token = strtok(input, " \n");
 		int i = 0;
@@ -108,36 +129,13 @@ void fork_exec_bg(string cmd) {
 		}
 		cmdArg[++i] = NULL;
 
-		execvp(cmdArg[0], cmdArg);
-	}
+        close(fds[0]);
+        dup2(fds[1], 1);
+        execvp(cmdArg[0], cmdArg);
+	} else {
+        close(fds[1]);
+    }
 }
 
 bool resolve_exec() {
-	if(child != 0) {
-/*
-		switch(exec_env) {
-			case AND:
-
-			break;
-			case OR:
-
-			break;
-			case STREAM_IN:
-
-			break;
-			case STREAM_OUT:
-
-			break;
-			case STREAM_ERR:
-
-			break;
-			case PIPE:
-
-			break;
-			case BACKGROUND:
-
-			break;
-		}
-*/
-	}
 }

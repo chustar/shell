@@ -8,4 +8,8 @@ C
 T
 ls ..
 C
+>>
+T
+file.txt
+S
 go
