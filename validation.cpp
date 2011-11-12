@@ -19,9 +19,9 @@
 #include "user_exec.h"
 #include "var.h"
 
-#define COMMAND 'c'
-#define TOKEN 't'
-#define VARIABLE 'v'
+#define COMMAND 'C'
+#define TOKEN 'T'
+#define VARIABLE 'V'
 
 bool fatal_error = false;   //if any unrecoverable error occur, this variable becomes true and shell will terminate
 
@@ -151,6 +151,7 @@ int main()
 
 void validCommand(vector<string> _commands, vector<char> _type)
 {
+/*
     vector<string>::iterator current_cmd;
     vector<char>::iterator loctype;
 
@@ -163,5 +164,5 @@ void validCommand(vector<string> _commands, vector<char> _type)
             else if (*loctype == TOKEN)
                 cout << endl << "Operator: " << *current_cmd << endl;
     }
-
+*/
 }

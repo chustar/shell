@@ -2,6 +2,8 @@
 #include <vector>
 #include <fstream>
 
+#include "user_exec.h"
+
 using namespace std;
 
 int user_exec(vector<string>, vector<char>);
@@ -24,6 +26,7 @@ int user_exec(vector<string> cmd, vector<char> types) {
 			fork_exec_bg(*cmdIter);
 		}
 	}
+    resolve_exec();
 	waitpid(child, &last_res, 0);
 	return WEXITSTATUS(last_res);
 }
@@ -32,13 +35,12 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 	int res = 0;
 	//set the negation if the command is !
     if(*cmdIter == "!") {
-		cout << "Executing: !" << endl;
 		neg = true;
     //handle AND condition.
 	} else if(*cmdIter == "&&") {
-		cout << "Executing: &&" << endl;
         cmdIter++;                                      //look ahead to the next command
-		typeIter++;                                     //look ahead to the next type
+		typeIter++;                                     //look ahead to the next typeIter
+        resolve_exec();
         waitpid(child, &res, 0);                        //check the status of the last run command
 		if(neg) {                                       //flip the response of the last command if negate was set.
 			if (res > 0) res = 0;
@@ -46,7 +48,6 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
             neg = false;
 		}
 		if (res == 0) {                                 //if the last guy worked, execute it and leave it in the background
-			cout << "Executing: &&: Next" << endl;
 			if (*cmdIter == "!") {                      //handle a not condition before the next line
 				cmdIter++;
 				typeIter++;
@@ -62,17 +63,15 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 			typeIter++;
 		}
 	} else if(*cmdIter == "||"){
-		cout << "Executing: ||" << endl;
 		cmdIter++;
 		typeIter++;
+        resolve_exec();
         waitpid(child, &res, 0);
-        cout << res << endl;
 		if(neg) {
 			if (res > 0) res = 0;
 			else if (res == 0) res = 1;
 		}
 		if (res != 0) {
-			cout << "Executing: ||: Next" << endl;
 			if (*cmdIter == "!") {
 				cmdIter++;
 				typeIter++;
@@ -89,7 +88,6 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 		}
 		neg = false;
 	} else if(*cmdIter == ">>"){
-        cout << "Executing: >>" << endl;
 		cmdIter++;
 		typeIter++;
 
@@ -113,12 +111,9 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 }
 
 void fork_exec_bg(string cmd) {
-	cout << "Executing: " << cmd << endl;
     pipe(fds);
 	child = fork();
     if(child == 0) {
-//        close(fds[1]);
-
         char *input = (char*)cmd.c_str();
 		char *cmdArg[100];
 		char *token = strtok(input, " \n");
@@ -141,4 +136,11 @@ void fork_exec_bg(string cmd) {
 }
 
 bool resolve_exec() {
+    long lSize = 10000;
+    char * buffer;
+    buffer = new char[lSize];
+    close(fds[1]);
+    int len = read(fds[0], buffer, lSize);
+    string out(buffer);
+    cout << out;
 }
