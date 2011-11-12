@@ -78,7 +78,7 @@ int main()
                     loc_cmd = commands.begin();
                     // check if the onle element in the vector is a command, operator, or variable
                     if (*loc_cmd == "&" || *loc_cmd == "&&" || *loc_cmd == "||" || *loc_cmd == "|" || *loc_cmd == "<" ||
-                    *loc_cmd == ">" || *loc_cmd == "2>"){
+                    *loc_cmd == ">" || *loc_cmd == "2>" || *loc_cmd == ">>"){
                         cout << endl << "Grammar error, missing command from user." << endl;    //input is invalid. There is only
                         grammar_error = true;                                                   //one operator, and no command
                     }
@@ -97,7 +97,7 @@ int main()
                     for(loc_cmd = commands.begin(); loc_cmd < commands.end(); loc_cmd++){    //scan and validate each element in the command vector
                         //cout << "\nvector: " << *loc << endl;         //print content of vector command
                         if (*loc_cmd == "&" || *loc_cmd == "&&" || *loc_cmd == "||" || *loc_cmd == "|" || *loc_cmd == "<" ||
-                                *loc_cmd == ">" || *loc_cmd == "2>")
+                                *loc_cmd == ">" || *loc_cmd == "2>" || *loc_cmd == ">>")
                             type.push_back(TOKEN);               //element is a token
                         else if (*loc_cmd == "=")
                             type.push_back(VARIABLE);            //element if a system variable
