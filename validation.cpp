@@ -21,7 +21,7 @@
 
 #define COMMAND 'c'
 #define TOKEN 't'
-#define VARIABLE 'V'
+#define VARIABLE 'v'
 
 bool fatal_error = false;   //if any unrecoverable error occur, this variable becomes true and shell will terminate
 
