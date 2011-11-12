@@ -1,12 +1,15 @@
 #include <iostream>
 #include <fstream>
 #include <stdlib.h>
+
 #include "var.h"
 
-#ifndef VAR_CPP
-#define VAR_CPP
-
 using namespace std;
+
+int load_vars();
+string get_var(string);
+int set_var(string, string);
+
 int load_vars() {
 	int res;
 	ifstream file;
@@ -23,10 +26,10 @@ int load_vars() {
 		if(file.good()) {
 			getline(file, value);
 			res = set_var(name, value);
-		}	
+		}
 	}
 	file.close();
-	return res;		
+	return res;
 }
 
 string get_var(string name) {
@@ -40,4 +43,3 @@ int set_var(string name, string value) {
 	res = setenv(name.c_str(), value.c_str(), 1);
 	if (res < 0) cout << name << "&" << value << " failed" << endl;
 }
-#endif

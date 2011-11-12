@@ -8,11 +8,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "var.h"
-using namespace std;
+#include "var.cpp"
+
 #define EXIT 0
 #define QUIT "quit\n"
-//#define DEBUG 0 
+
+using namespace std;
 
 int main() {
 	pid_t pid;		//holds pid number
