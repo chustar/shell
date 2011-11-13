@@ -2,14 +2,6 @@ ls
 C
 &&
 T
-cat s.sh142
+ls
 C
-||
-T
-ls ..
-C
->>
-T
-file.txt
-S
 go
