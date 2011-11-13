@@ -58,8 +58,17 @@ int main()
             string value = inputBuffer.substr(inputBuffer.find('=')+1l,inputBuffer.size());
             cout << endl << "shell variable " << var << endl;
             cout << endl << "shell value: " << value << endl;
-         //   set_var(var,value);
+            set_var(var,value);
 
+        }
+        else if (inputBuffer.find(':') != string::npos)
+        {
+            cout << endl << "Starting remote shell..." << endl;
+
+        }
+        else if (inputBuffer.find(':') != string::npos && inputBuffer.find('=') != string::npos)
+        {
+            cout << endl << "Cannot determinate is input is a shell variable or shell remote access.. " << endl;
         }
         else                                    //input is one or more commands
         {
@@ -78,7 +87,7 @@ int main()
                     loc_cmd = commands.begin();
                     // check if the onle element in the vector is a command, operator, or variable
                     if (*loc_cmd == "&" || *loc_cmd == "&&" || *loc_cmd == "||" || *loc_cmd == "|" || *loc_cmd == "<" ||
-                    *loc_cmd == ">" || *loc_cmd == "2>"){
+                    *loc_cmd == ">" || *loc_cmd == "2>" || *loc_cmd == ">>"){
                         cout << endl << "Grammar error, missing command from user." << endl;    //input is invalid. There is only
                         grammar_error = true;                                                   //one operator, and no command
                     }
@@ -97,7 +106,7 @@ int main()
                     for(loc_cmd = commands.begin(); loc_cmd < commands.end(); loc_cmd++){    //scan and validate each element in the command vector
                         //cout << "\nvector: " << *loc << endl;         //print content of vector command
                         if (*loc_cmd == "&" || *loc_cmd == "&&" || *loc_cmd == "||" || *loc_cmd == "|" || *loc_cmd == "<" ||
-                                *loc_cmd == ">" || *loc_cmd == "2>")
+                                *loc_cmd == ">" || *loc_cmd == "2>" || *loc_cmd == ">>")
                             type.push_back(TOKEN);               //element is a token
                         else if (*loc_cmd == "=")
                             type.push_back(VARIABLE);            //element if a system variable
@@ -142,8 +151,6 @@ int main()
                 type.clear();       //flush content of type vector
         }
     }
-
-
 
     return 0;
 
