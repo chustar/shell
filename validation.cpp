@@ -68,7 +68,7 @@ int main()
         }
         else if (inputBuffer.find(':') != string::npos && inputBuffer.find('=') != string::npos)
         {
-            cout << endl << "Cannot determinate is input is a shell variable or shell remote access.. " << endl;
+            cout << endl << "Cannot determinate is input is a shell variable or shell remote access.... " << endl;
         }
         else                                    //input is one or more commands
         {
