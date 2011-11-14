@@ -58,8 +58,17 @@ int main()
             string value = inputBuffer.substr(inputBuffer.find('=')+1l,inputBuffer.size());
             cout << endl << "shell variable " << var << endl;
             cout << endl << "shell value: " << value << endl;
-         //   set_var(var,value);
+            set_var(var,value);
 
+        }
+        else if (inputBuffer.find(':') != string::npos)
+        {
+            cout << endl << "Starting remote shell..." << endl;
+
+        }
+        else if (inputBuffer.find(':') != string::npos && inputBuffer.find('=') != string::npos)
+        {
+            cout << endl << "Cannot determinate is input is a shell variable or shell remote access.... " << endl;
         }
         else                                    //input is one or more commands
         {
@@ -142,8 +151,6 @@ int main()
                 type.clear();       //flush content of type vector
         }
     }
-
-
 
     return 0;
 
