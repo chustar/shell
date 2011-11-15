@@ -93,11 +93,11 @@ int main()
                     commands.push_back(for_loop_commands);
             }
             //call for function from minh and send initialization, condition, increase, and commands vector
-            /*
+
             for(loc_cmd = commands.begin(); loc_cmd < commands.end(); loc_cmd++){
                 cout << endl << "cmd: " << *loc_cmd << endl;
+
             }
-            */
             commands.clear();    //flush content of command vect
         }
         else                                    //input is one or more commands
@@ -113,7 +113,7 @@ int main()
                                                 // the buffer
                     if(cmd != " ")
                         commands.push_back(cmd);
-//                    cout << endl << "***cmd: " << cmd << endl;
+                    cout << endl << "***cmd: " << cmd << endl;
                 }
                 end_cmd++;
             }
@@ -169,8 +169,8 @@ int main()
             }
             if (!grammar_error){
 
-                user_exec(commands,type);          // send vector command to user_exec.cpp   ***uncomment ***
-             //   validCommand(commands,type);
+             //   user_exec(commands,type);          // send vector command to user_exec.cpp   ***uncomment ***
+                validCommand(commands,type);
 
             }
                 commands.clear();    //flush content of command vector
