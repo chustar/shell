@@ -1,29 +1,35 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
-
+#include <sys/wait.h>
+#include <sys/time.h>
 #include "user_exec.h"
 
 using namespace std;
 
-int user_exec(vector<string>, vector<char>);
-bool token_exec(vector<string>::iterator &, vector<char>::iterator &);
-void fork_exec_bg(string);
-bool resolve_exec();
-
 pid_t child = 0;
 int last_res = 0;
 bool neg = false;
-int fds[2];
+int out_fd[2];
+int in_fd[2];
+int err_fd[3];
+string stream_file[3];
+
+int STREAM_OUT = 0;
+int STREAM_IN = 1;
+int ERR_OUT = 2;
 
 int user_exec(vector<string> cmd, vector<char> types) {
 	vector<string>::iterator cmdIter;
 	vector<char>::iterator typeIter;
 	for(cmdIter = cmd.begin(), typeIter = types.begin(); cmdIter < cmd.end(); ++cmdIter, ++typeIter) {
 		if(*typeIter == 'T') {
-			token_exec(cmdIter, typeIter);
+			token_exec(cmdIter, typeIter, cmd);
 		} else if(*typeIter == 'C') {
-			fork_exec_bg(*cmdIter);
+            stream_file[0] = "";
+            stream_file[1] = "";
+            stream_file[2] = "";
+            stream_exec(cmdIter, cmd);
 		}
 	}
     resolve_exec();
@@ -31,7 +37,7 @@ int user_exec(vector<string> cmd, vector<char> types) {
 	return WEXITSTATUS(last_res);
 }
 
-bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeIter) {
+bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeIter, vector<string> cmdV) {
 	int res = 0;
 	//set the negation if the command is !
     if(*cmdIter == "!") {
@@ -53,7 +59,7 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 				typeIter++;
                 neg = true;
             }
-            fork_exec_bg(*cmdIter);
+            stream_exec(cmdIter, cmdV);
 		} else {                                        //if the command before and "failed" then ignore the next command (including its associated !
 			if (*cmdIter == "!") {
 				cmdIter++;
@@ -77,7 +83,7 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 				typeIter++;
                 neg = true;
 			}
-			fork_exec_bg(*cmdIter);
+			 stream_exec(cmdIter, cmdV);
 		} else {
 			if (*cmdIter == "!") {
 				cmdIter++;
@@ -87,31 +93,20 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 			typeIter++;
 		}
 		neg = false;
-	} else if(*cmdIter == ">>"){
-		cmdIter++;
-		typeIter++;
-
-        long lSize = 1000;
-        char * buffer;
-        buffer = new char[lSize];
-        close(fds[1]);
-        int len = read(fds[0], buffer, lSize);
-        string out(buffer);
-
-        ofstream fout((*cmdIter).c_str(), ios_base::trunc);
-        fout << out;
-
-        fout.close();
-        delete [] buffer;
-
-        waitpid(child, &res, 0);
 	} else if(*cmdIter == "|") {
 
 	}
 }
 
+//johnny one note
 void fork_exec_bg(string cmd) {
-    pipe(fds);
+    if (stream_file[STREAM_OUT] != "")
+        pipe(out_fd);
+    if (stream_file[STREAM_IN] != "")
+        pipe(in_fd);
+    if (stream_file[ERR_OUT] != "")
+        pipe(err_fd);
+
 	child = fork();
     if(child == 0) {
         char *input = (char*)cmd.c_str();
@@ -127,20 +122,120 @@ void fork_exec_bg(string cmd) {
 		}
 		cmdArg[++i] = NULL;
 
-        close(fds[0]);
-        dup2(fds[1], 1);
+        if (stream_file[STREAM_OUT] != "") {
+            close(out_fd[0]);
+            dup2(out_fd[1], 1);
+        }
+        if (stream_file[STREAM_IN] != "") {
+            close(in_fd[1]);
+            dup2(out_fd[0], 0);
+        }
+       if (stream_file[ERR_OUT] != "") {
+            close(err_fd[0]);
+            close(err_fd[1]);
+            dup2(out_fd[2], 2);
+        }
+
         execvp(cmdArg[0], cmdArg);
 	} else {
-        close(fds[1]);
+        if (stream_file[STREAM_OUT] != "") {
+            close(out_fd[1]);
+            fork_out_proc();
+        }
+        if (stream_file[STREAM_IN] != "") {
+            close(in_fd[0]);
+            fork_in_proc();
+        }
+       if (stream_file[ERR_OUT] != "") {
+            close(err_fd[1]);
+            close(err_fd[2]);
+            fork_err_proc();
+        }
     }
 }
 
-bool resolve_exec() {
+void fork_out_proc() {
+    if(fork() == 0) {
+        long lSize = 10000;
+        char * buffer;
+        buffer = new char[lSize];
+        close(out_fd[1]);
+        int len = read(out_fd[0], buffer, lSize);
+        string out(buffer);
+
+        ofstream fout(stream_file[STREAM_OUT].c_str(), ios_base::trunc);
+        fout << out;
+
+        fout.close();
+        delete [] buffer;
+    }
+}
+
+void fork_in_proc() {
+    /*
+    if(fork() == 0) {
+        long lSize = 10000;
+        char * buffer;
+        buffer = new char[lSize];
+        close(out_fd[0]);
+        int len = read(out_fd[1], buffer, lSize);
+        string out(buffer);
+
+        ofstream fout(stream[STREAM_OUT], ios_base::trunc);
+        fout << out;
+
+        fout.close();
+        delete [] buffer;
+    }
+    */
+}
+
+void fork_err_proc() {
+    if(fork() == 0) {
+        long lSize = 10000;
+        char * buffer;
+        buffer = new char[lSize];
+        close(out_fd[1]);
+        close(err_fd[2]);
+        int len = read(err_fd[0], buffer, lSize);
+        string out(buffer);
+
+        ofstream fout(stream_file[ERR_OUT].c_str(), ios_base::trunc);
+        fout << out;
+
+        fout.close();
+        delete [] buffer;
+    }
+}
+
+void stream_exec(vector<string>::iterator &cmdIter, vector<string> vec) {
+    string cmd = *cmdIter;
+    while (cmdIter < vec.end() && *cmdIter != "&&" && *cmdIter != "||") {
+        if(*cmdIter == "<") {
+            cmdIter++;
+            stream_file[STREAM_IN] = *cmdIter;
+        } else if(*cmdIter == ">" || *cmdIter == ">>") {
+            cmdIter++;
+            stream_file[STREAM_OUT] = *cmdIter;
+        } else if(*cmdIter == "2>" || *cmdIter == "2>>") {
+            cmdIter++;
+            stream_file[ERR_OUT] = *cmdIter;
+        }
+        cmdIter++;
+    }
+    fork_exec_bg(cmd);
+}
+
+void resolve_exec() {
     long lSize = 10000;
     char * buffer;
     buffer = new char[lSize];
-    close(fds[1]);
-    int len = read(fds[0], buffer, lSize);
+
+    int len = read(out_fd[0], buffer, lSize);
     string out(buffer);
     cout << out;
+    len = read(err_fd[0], buffer, lSize);
+    out = string(buffer);
+    cout << out;
+    waitpid(child, &last_res, 0);
 }
