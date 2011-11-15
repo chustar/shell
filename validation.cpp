@@ -93,11 +93,12 @@ int main()
                     commands.push_back(for_loop_commands);
             }
             //call for function from minh and send initialization, condition, increase, and commands vector
-
+/*
             for(loc_cmd = commands.begin(); loc_cmd < commands.end(); loc_cmd++){
                 cout << endl << "cmd: " << *loc_cmd << endl;
 
             }
+*/
             commands.clear();    //flush content of command vect
         }
         else                                    //input is one or more commands
@@ -113,7 +114,7 @@ int main()
                                                 // the buffer
                     if(cmd != " ")
                         commands.push_back(cmd);
-                    cout << endl << "***cmd: " << cmd << endl;
+ //                   cout << endl << "***cmd: " << cmd << endl;
                 }
                 end_cmd++;
             }
@@ -184,7 +185,6 @@ int main()
 
 void validCommand(vector<string> _commands, vector<char> _type)
 {
-/
     vector<string>::iterator current_cmd;
     vector<char>::iterator loctype;
 

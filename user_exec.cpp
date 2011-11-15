@@ -3,6 +3,7 @@
 #include <fstream>
 #include <sys/wait.h>
 #include <sys/time.h>
+#include <string.h>
 #include "user_exec.h"
 
 using namespace std;
