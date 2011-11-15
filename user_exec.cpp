@@ -22,22 +22,24 @@ int ERR_OUT = 2;
 int user_exec(vector<string> cmd, vector<char> types) {
 	vector<string>::iterator cmdIter;
 	vector<char>::iterator typeIter;
-	for(cmdIter = cmd.begin(), typeIter = types.begin(); cmdIter < cmd.end(); ++cmdIter, ++typeIter) {
-		if(*typeIter == 'T') {
-			token_exec(cmdIter, typeIter, cmd);
-		} else if(*typeIter == 'C') {
-            stream_file[0] = "";
-            stream_file[1] = "";
-            stream_file[2] = "";
-            stream_exec(cmdIter, cmd);
-		}
-	}
-    resolve_exec();
-	waitpid(child, &last_res, 0);
-	return WEXITSTATUS(last_res);
+    if(cmd.size() != 0) {
+        for(cmdIter = cmd.begin(), typeIter = types.begin(); cmdIter < cmd.end(); ++cmdIter, ++typeIter) {
+            if(*typeIter == 'T') {
+                token_exec(cmdIter, typeIter, cmd);
+            } else if(*typeIter == 'C') {
+                stream_file[0] = "";
+                stream_file[1] = "";
+                stream_file[2] = "";
+                stream_exec(cmdIter, cmd);
+            }
+        }
+    //    resolve_exec();
+        waitpid(child, &last_res, 0);
+        return WEXITSTATUS(last_res);
+    }
 }
 
-bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeIter, vector<string> cmdV) {
+bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeIter, vector<string> &cmdV) {
 	int res = 0;
 	//set the negation if the command is !
     if(*cmdIter == "!") {
@@ -46,7 +48,7 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 	} else if(*cmdIter == "&&") {
         cmdIter++;                                      //look ahead to the next command
 		typeIter++;                                     //look ahead to the next typeIter
-        resolve_exec();
+//        resolve_exec();
         waitpid(child, &res, 0);                        //check the status of the last run command
 		if(neg) {                                       //flip the response of the last command if negate was set.
 			if (res > 0) res = 0;
@@ -71,7 +73,7 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 	} else if(*cmdIter == "||"){
 		cmdIter++;
 		typeIter++;
-        resolve_exec();
+//        resolve_exec();
         waitpid(child, &res, 0);
 		if(neg) {
 			if (res > 0) res = 0;
@@ -208,7 +210,7 @@ void fork_err_proc() {
     }
 }
 
-void stream_exec(vector<string>::iterator &cmdIter, vector<string> vec) {
+void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
     string cmd = *cmdIter;
     while (cmdIter < vec.end() && *cmdIter != "&&" && *cmdIter != "||") {
         if(*cmdIter == "<") {
@@ -223,6 +225,7 @@ void stream_exec(vector<string>::iterator &cmdIter, vector<string> vec) {
         }
         cmdIter++;
     }
+    cmdIter--;
     fork_exec_bg(cmd);
 }
 
