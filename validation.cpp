@@ -18,6 +18,7 @@
 #include <vector>
 #include "user_exec.h"
 #include "var.h"
+#include "remote_shell.h"
 
 #define COMMAND 'C'
 #define TOKEN 'T'
@@ -52,53 +53,76 @@ int main()
         inputBuffer.append(" "); // append space at the end of string; otherwise, last command will not be read
         int front_cmd = 0, end_cmd = 0;             //iterators for input string
 
-        if(inputBuffer.find('=') != string::npos)          // input is a shell variable
-        {
-            string var = inputBuffer.substr(0,inputBuffer.find('='));
-            string value = inputBuffer.substr(inputBuffer.find('=')+1l,inputBuffer.size());
-            cout << endl << "shell variable " << var << endl;
-            cout << endl << "shell value: " << value << endl;
-            set_var(var,value);
+        if (inputBuffer.find(':') != string::npos && inputBuffer.find('=') != string::npos)
+            cout << endl << "Cannot determinate is input is a shell variable or shell remote access.... " << endl;
 
-        }
-        else if (inputBuffer.find(':') != string::npos)
+        else if (inputBuffer.find(':') != string::npos && inputBuffer.find('#') == string::npos)
         {
             cout << endl << "Starting remote shell..." << endl;
+            string remote_name = inputBuffer.substr(0,inputBuffer.find(':'));
+            string command = inputBuffer.substr(inputBuffer.find(':')+1,inputBuffer.size());
+            remote_shell(remote_name, command);
+        }
+        else if(inputBuffer.find('=') != string::npos && inputBuffer.find("for") == string::npos) // input is a shell variable
+        {
+            string var = inputBuffer.substr(0,inputBuffer.find('='));
+            string value = inputBuffer.substr(inputBuffer.find('=')+1,inputBuffer.size());
+            cout << endl << "shell variable " << var << endl;
+            cout << endl << "shell value: " << value << endl;
+            set_var(var,value);                                  // ***uncomment ***
 
         }
-        else if (inputBuffer.find(':') != string::npos && inputBuffer.find('=') != string::npos)
+        else if(inputBuffer.find("for") != string::npos)    // for(initialization; condition; increase)
         {
-            cout << endl << "Cannot determinate is input is a shell variable or shell remote access.... " << endl;
+            string for_parameter = inputBuffer.substr(inputBuffer.find('(')+1); // get for loop parameters
+            for_parameter = for_parameter.substr(0,for_parameter.find(')'));
+            string initialization = for_parameter.substr(0,for_parameter.find_first_of(';'));
+            string condition = for_parameter.substr(for_parameter.find(';')+1);
+            condition = condition.substr(0,condition.find(';'));
+            string increase = for_parameter.substr(for_parameter.find_last_of(';')+1);
+            cout << endl << "initialization: " << initialization << endl;
+            cout << endl << "condition: " << condition << endl;
+            cout << endl << "increase: " << increase << endl;
+            string for_loop_commands = "0";
+            while (for_loop_commands != "forend"){
+                getline(cin,for_loop_commands);
+                if(for_loop_commands != "forend")
+                    commands.push_back(for_loop_commands);
+            }
+            //call for function from minh and send initialization, condition, increase, and commands vector
+
+            for(loc_cmd = commands.begin(); loc_cmd < commands.end(); loc_cmd++){
+                cout << endl << "cmd: " << *loc_cmd << endl;
+
+            }
+            commands.clear();    //flush content of command vect
         }
         else                                    //input is one or more commands
         {
             while (inputBuffer[end_cmd])  // scan the entire buffer to separe commands and tokens
             {
-                if(inputBuffer[end_cmd] == ' ' && inputBuffer[end_cmd + 1] != '.'&& inputBuffer[end_cmd + 1] != '#'){
+               if(inputBuffer[end_cmd] == ' ' && inputBuffer[end_cmd + 1] != '.' && inputBuffer[end_cmd + 1] != '#'
+                    && inputBuffer[end_cmd + 1] != '/' && inputBuffer[end_cmd + 1] != ' '){
+
                     cmd = inputBuffer.substr(front_cmd,end_cmd - front_cmd);
-                    front_cmd = end_cmd +1;    // this ignore the white space for the next comand when checking for the rest of
-                                            // the buffer
+                    front_cmd = end_cmd + 1;    // this ignore the white space for the next comand when checking for the rest of
+                                                // the buffer
                     if(cmd != " ")
                         commands.push_back(cmd);
+                    cout << endl << "***cmd: " << cmd << endl;
                 }
                 end_cmd++;
             }
                 if(commands.size() == 1) {          // there is only one element in the vector
                     loc_cmd = commands.begin();
-                    // check if the onle element in the vector is a command, operator, or variable
+                    // check if the only element in the vector is a command, operator, or variable
                     if (*loc_cmd == "&" || *loc_cmd == "&&" || *loc_cmd == "||" || *loc_cmd == "|" || *loc_cmd == "<" ||
                     *loc_cmd == ">" || *loc_cmd == "2>" || *loc_cmd == ">>"){
                         cout << endl << "Grammar error, missing command from user." << endl;    //input is invalid. There is only
                         grammar_error = true;                                                   //one operator, and no command
                     }
                     else {                       //input is valid
-                        //check if the first three letter is the for command
-                        //if(for)
-
-                        //else the input is jost a command
-                        //else
                         type.push_back(COMMAND);
-
                     }
                 }
                 else
@@ -122,13 +146,11 @@ int main()
                         next_type = loctype + 1;                                // get the next element of the vector to check
                                                                                 // for grammar error
                     // cout << endl << "temp " << *temp << endl;
-                        if(*next_type == COMMAND){
+                     /*   if(*next_type == COMMAND){
                             cout << endl << "Grammar error. Operator expected after "<< currentCommand << endl;
                             grammar_error = true;
                             break;                                        // no command found after token, exit for loop
-                        }
-                        //else
-                            //validCommand(currentCommand);
+                        }*/
                     }
                     else if (*loctype == VARIABLE){
                         systemVariable = *loc_cmd;
@@ -143,7 +165,7 @@ int main()
             }
             if (!grammar_error){
 
-                user_exec(commands,type);          // send vector command to user_exec.cpp
+             //   user_exec(commands,type);          // send vector command to user_exec.cpp   ***uncomment ***
                 validCommand(commands,type);
 
             }
@@ -158,7 +180,7 @@ int main()
 
 void validCommand(vector<string> _commands, vector<char> _type)
 {
-/*
+
     vector<string>::iterator current_cmd;
     vector<char>::iterator loctype;
 
@@ -171,5 +193,5 @@ void validCommand(vector<string> _commands, vector<char> _type)
             else if (*loctype == TOKEN)
                 cout << endl << "Operator: " << *current_cmd << endl;
     }
-*/
+
 }
