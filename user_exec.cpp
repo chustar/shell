@@ -148,7 +148,7 @@ void fork_exec_bg(string cmd) {
         pid_t err_pid;
         if (stream_file[STREAM_OUT] != "") {
             close(out_fd[1]);
-            fork_out_proc();
+            out_pid = fork_out_proc();
         }
         if (stream_file[STREAM_IN] != "") {
             close(in_fd[0]);
