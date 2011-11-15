@@ -1,9 +1,11 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <string.h>
 #include <sys/wait.h>
 #include <sys/time.h>
 #include "user_exec.h"
+#include "launch_process.h"
 
 using namespace std;
 
@@ -212,6 +214,7 @@ void fork_err_proc() {
 
 void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
     string cmd = *cmdIter;
+    bool foreground = true;
     while (cmdIter < vec.end() && *cmdIter != "&&" && *cmdIter != "||") {
         if(*cmdIter == "<") {
             cmdIter++;
@@ -223,10 +226,16 @@ void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
             cmdIter++;
             stream_file[ERR_OUT] = *cmdIter;
         }
+	else if(*cmdIter == "&") {
+		foreground = false;
+	}
         cmdIter++;
     }
     cmdIter--;
-    fork_exec_bg(cmd);
+    if(foreground)  
+    	fork_exec_bg(cmd);
+    else
+	launch_bg_process(cmd);
 }
 
 void resolve_exec() {
