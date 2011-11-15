@@ -32,6 +32,7 @@ int user_exec(vector<string> cmd, vector<char> types) {
                 stream_file[2] = "";
                 stream_exec(cmdIter, cmd);
             }
+            cout << "running " << *cmdIter <<  endl;
         }
     //    resolve_exec();
         waitpid(child, &last_res, 0);
@@ -140,6 +141,10 @@ void fork_exec_bg(string cmd) {
 
         execvp(cmdArg[0], cmdArg);
 	} else {
+        int res;
+        pid_t out_pid;
+        pid_t in_pid;
+        pid_t err_pid;
         if (stream_file[STREAM_OUT] != "") {
             close(out_fd[1]);
             fork_out_proc();
@@ -153,11 +158,23 @@ void fork_exec_bg(string cmd) {
             close(err_fd[2]);
             fork_err_proc();
         }
+
+        if (stream_file[STREAM_OUT] != "") {
+            waitpid(out_pid, &res, 0);
+        }
+        if (stream_file[STREAM_IN] != "") {
+            waitpid(in_pid, &res, 0);
+        }
+       if (stream_file[ERR_OUT] != "") {
+            waitpid(err_pid, &res, 0);
+        }
+
     }
 }
 
-void fork_out_proc() {
-    if(fork() == 0) {
+pid_t fork_out_proc() {
+    pid_t out_pid;
+    if((out_pid = fork()) == 0) {
         long lSize = 10000;
         char * buffer;
         buffer = new char[lSize];
@@ -169,7 +186,10 @@ void fork_out_proc() {
         fout << out;
 
         fout.close();
+        cout << "woooooo" << endl;
         delete [] buffer;
+    } else {
+        return out_pid;
     }
 }
 

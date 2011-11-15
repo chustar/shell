@@ -180,7 +180,7 @@ int main()
 
 void validCommand(vector<string> _commands, vector<char> _type)
 {
-
+/
     vector<string>::iterator current_cmd;
     vector<char>::iterator loctype;
 
