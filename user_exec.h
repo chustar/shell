@@ -8,7 +8,7 @@ using namespace std;
 
 int user_exec(vector<string>, vector<char>);
 bool token_exec(vector<string>::iterator &, vector<char>::iterator &, vector<string>&);
-void fork_exec_bg(string);
+void fork_exec_bg(string,bool);
 void stream_exec(vector<string>::iterator &, vector<string> &);
 void resolve_exec();
 pid_t fork_out_proc();

@@ -49,7 +49,7 @@ void init_shell() {
 }
 
 
-void launch_bg_process(std::string cmd, bool foreground) {
+void launch_process(std::string cmd, bool foreground) {
         pid_t process;
         int status;
 
