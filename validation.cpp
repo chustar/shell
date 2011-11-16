@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <vector>
+#include <stdlib.h>
 #include "user_exec.h"
 #include "var.h"
 #include "remote_shell.h"
@@ -30,6 +31,7 @@ bool fatal_error = false;   //if any unrecoverable error occur, this variable be
 using namespace std;
 
 void validCommand(vector<string>, vector<char> );
+bool checkchar(char );
 int main()
 {
     vector<string> commands;
@@ -101,20 +103,28 @@ int main()
 */
             commands.clear();    //flush content of command vect
         }
+        else if (inputBuffer.find("$?") != string::npos)
+        {
+            if(commands.size() == 0)
+                cout << "No commands executed" << endl;
+            else{
+                int process_num = atoi((inputBuffer.substr(2,inputBuffer.size())).c_str());
+                cout << endl << "check exit status of process number " << process_num << endl;
+            }
+        }
         else                                    //input is one or more commands
         {
             while (inputBuffer[end_cmd])  // scan the entire buffer to separe commands and tokens
             {
                if(inputBuffer[end_cmd] == ' ' && inputBuffer[end_cmd + 1] != '.' && inputBuffer[end_cmd + 1] != '#'
-                    && inputBuffer[end_cmd + 1] != '/' && inputBuffer[end_cmd + 1] != '-'
-                    && inputBuffer[end_cmd + 1] != ' '){
+                    && inputBuffer[end_cmd + 1] != '/' && inputBuffer[end_cmd + 1] != '-' ){//exit&& checkchar(inputBuffer[end_cmd + 1])){
 
                     cmd = inputBuffer.substr(front_cmd,end_cmd - front_cmd);
                     front_cmd = end_cmd + 1;    // this ignore the white space for the next comand when checking for the rest of
                                                 // the buffer
                     if(cmd != " ")
                         commands.push_back(cmd);
- //                   cout << endl << "***cmd: " << cmd << endl;
+                    cout << endl << "***cmd: " << cmd << endl;
                 }
                 end_cmd++;
             }
@@ -170,8 +180,8 @@ int main()
             }
             if (!grammar_error){
 
-                user_exec(commands,type);          // send vector command to user_exec.cpp   ***uncomment ***
-             //   validCommand(commands,type);
+             //   user_exec(commands,type);          // send vector command to user_exec.cpp   ***uncomment ***
+               validCommand(commands,type);
 
             }
                 commands.clear();    //flush content of command vector
@@ -197,5 +207,18 @@ void validCommand(vector<string> _commands, vector<char> _type)
             else if (*loctype == TOKEN)
                 cout << endl << "Operator: " << *current_cmd << endl;
     }
+
+}
+
+bool checkchar(char c)
+{
+    if (   c == 'a' || c == 'b' || c == 'c' || c == 'd' || c == 'e' || c == 'f'
+        || c == 'g' || c == 'h' || c== 'i'  || c == 'j' || c == 'k' || c == 'l'
+        || c == 'm' || c == 'n' || c== 'o'  || c == 'p' || c == 'q' || c == 'r'
+        || c == 's' || c == 't' || c == 'u' || c == 'v' || c == 'w' || c == 'x'
+        || c == 'y' || c == 'z')
+            return false;
+    else
+        return true;
 
 }
