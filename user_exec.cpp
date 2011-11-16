@@ -13,7 +13,7 @@ int last_res = 0;
 bool neg = false;
 int out_fd[2];
 int in_fd[2];
-int err_fd[3];
+int err_fd[2];
 string stream_file[3];
 
 int STREAM_OUT = 0;
@@ -23,7 +23,7 @@ int ERR_OUT = 2;
 int user_exec(vector<string> cmd, vector<char> types) {
 	vector<string>::iterator cmdIter;
 	vector<char>::iterator typeIter;
-    if(cmd.size() != 0) {
+    if(cmd.size() != 0 && cmd[0] != "") {
         for(cmdIter = cmd.begin(), typeIter = types.begin(); cmdIter < cmd.end(); ++cmdIter, ++typeIter) {
             if(*typeIter == 'T') {
                 token_exec(cmdIter, typeIter, cmd);
@@ -33,7 +33,6 @@ int user_exec(vector<string> cmd, vector<char> types) {
                 stream_file[2] = "";
                 stream_exec(cmdIter, cmd);
             }
-            cout << "running " << *cmdIter <<  endl;
         }
     //    resolve_exec();
         waitpid(child, &last_res, 0);
@@ -43,14 +42,11 @@ int user_exec(vector<string> cmd, vector<char> types) {
 
 bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeIter, vector<string> &cmdV) {
 	int res = 0;
-	//set the negation if the command is !
-    if(*cmdIter == "!") {
+    if(*cmdIter == "!") {                               //handle NOT condition
 		neg = true;
-    //handle AND condition.
-	} else if(*cmdIter == "&&") {
+	} else if(*cmdIter == "&&") {                       //handle AND condition
         cmdIter++;                                      //look ahead to the next command
 		typeIter++;                                     //look ahead to the next typeIter
-//        resolve_exec();
         waitpid(child, &res, 0);                        //check the status of the last run command
 		if(neg) {                                       //flip the response of the last command if negate was set.
 			if (res > 0) res = 0;
@@ -102,6 +98,25 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 	}
 }
 
+void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
+    string cmd = *cmdIter;
+    while (cmdIter < vec.end() && *cmdIter != "&&" && *cmdIter != "||") {
+        if(*cmdIter == "<") {
+            cmdIter++;
+            stream_file[STREAM_IN] = *cmdIter;
+        } else if(*cmdIter == ">" || *cmdIter == ">>") {
+            cmdIter++;
+            stream_file[STREAM_OUT] = *cmdIter;
+        } else if(*cmdIter == "2>" || *cmdIter == "2>>") {
+            cmdIter++;
+            stream_file[ERR_OUT] = *cmdIter;
+        }
+        cmdIter++;
+    }
+    cmdIter--;
+    fork_exec_bg(cmd);
+}
+
 //johnny one note
 void fork_exec_bg(string cmd) {
     if (stream_file[STREAM_OUT] != "")
@@ -132,12 +147,11 @@ void fork_exec_bg(string cmd) {
         }
         if (stream_file[STREAM_IN] != "") {
             close(in_fd[1]);
-            dup2(out_fd[0], 0);
+            dup2(in_fd[0], 0);
         }
        if (stream_file[ERR_OUT] != "") {
             close(err_fd[0]);
-            close(err_fd[1]);
-            dup2(out_fd[2], 2);
+            dup2(err_fd[1], 2);
         }
 
         execvp(cmdArg[0], cmdArg);
@@ -152,12 +166,11 @@ void fork_exec_bg(string cmd) {
         }
         if (stream_file[STREAM_IN] != "") {
             close(in_fd[0]);
-            fork_in_proc();
+            in_pid = fork_in_proc();
         }
        if (stream_file[ERR_OUT] != "") {
             close(err_fd[1]);
-            close(err_fd[2]);
-            fork_err_proc();
+            err_pid = fork_err_proc();
         }
 
         if (stream_file[STREAM_OUT] != "") {
@@ -187,39 +200,44 @@ pid_t fork_out_proc() {
         fout << out;
 
         fout.close();
-        cout << "woooooo" << endl;
         delete [] buffer;
+        exit(0);
     } else {
         return out_pid;
     }
 }
 
-void fork_in_proc() {
-    /*
-    if(fork() == 0) {
-        long lSize = 10000;
-        char * buffer;
-        buffer = new char[lSize];
-        close(out_fd[0]);
-        int len = read(out_fd[1], buffer, lSize);
-        string out(buffer);
+pid_t fork_in_proc() {
+    string line;
+    pid_t in_pid;
+    if((in_pid = fork()) == 0) {
+        close(in_fd[0]);
+        ifstream file(stream_file[STREAM_IN].c_str(), ios_base::in);
+        if (file.bad()) {
+            cerr << "File read error\n";
+            return 1;
+        }
 
-        ofstream fout(stream[STREAM_OUT], ios_base::trunc);
-        fout << out;
-
-        fout.close();
-        delete [] buffer;
+        while(file.good()) {
+            getline(file, line, '=');
+            if(file.good()) {
+                write(in_fd[1], line.c_str(), line.length());
+            }
+        }
+        file.close();
+        exit(0);
+    } else {
+        return in_pid;
     }
-    */
 }
 
-void fork_err_proc() {
-    if(fork() == 0) {
+pid_t fork_err_proc() {
+    pid_t err_pid;
+    if((err_pid = fork()) == 0) {
         long lSize = 10000;
         char * buffer;
         buffer = new char[lSize];
-        close(out_fd[1]);
-        close(err_fd[2]);
+        close(err_fd[1]);
         int len = read(err_fd[0], buffer, lSize);
         string out(buffer);
 
@@ -228,26 +246,10 @@ void fork_err_proc() {
 
         fout.close();
         delete [] buffer;
+        exit(0);
+    } else {
+        return err_pid;
     }
-}
-
-void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
-    string cmd = *cmdIter;
-    while (cmdIter < vec.end() && *cmdIter != "&&" && *cmdIter != "||") {
-        if(*cmdIter == "<") {
-            cmdIter++;
-            stream_file[STREAM_IN] = *cmdIter;
-        } else if(*cmdIter == ">" || *cmdIter == ">>") {
-            cmdIter++;
-            stream_file[STREAM_OUT] = *cmdIter;
-        } else if(*cmdIter == "2>" || *cmdIter == "2>>") {
-            cmdIter++;
-            stream_file[ERR_OUT] = *cmdIter;
-        }
-        cmdIter++;
-    }
-    cmdIter--;
-    fork_exec_bg(cmd);
 }
 
 void resolve_exec() {

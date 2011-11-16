@@ -12,6 +12,6 @@ void fork_exec_bg(string);
 void stream_exec(vector<string>::iterator &, vector<string> &);
 void resolve_exec();
 pid_t fork_out_proc();
-void fork_in_proc();
-void fork_err_proc();
+pid_t fork_in_proc();
+pid_t fork_err_proc();
 #endif
