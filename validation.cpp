@@ -7,7 +7,8 @@
 ///#   File: validation.cpp                                    #
 ///#   Description: Gets and validates input from user.        #
 ///#                Determinates which string is a command,    #
-///#                operator, or system variable               #
+///#                operator, for loop, remote shell or system #
+///#                variable                                   #
 ///#############################################################
 
 
@@ -53,8 +54,10 @@ int main()
         inputBuffer.append(" "); // append space at the end of string; otherwise, last command will not be read
         int front_cmd = 0, end_cmd = 0;             //iterators for input string
 
-        if (inputBuffer.find(':') != string::npos && inputBuffer.find('=') != string::npos)
+        if (inputBuffer.find(':') != string::npos && inputBuffer.find('=') != string::npos){
             cout << endl << "Cannot determinate is input is a shell variable or shell remote access.... " << endl;
+            cout << "Please try again" << endl;
+        }
 
         else if (inputBuffer.find(':') != string::npos && inputBuffer.find('#') == string::npos)
         {
@@ -90,11 +93,12 @@ int main()
                     commands.push_back(for_loop_commands);
             }
             //call for function from minh and send initialization, condition, increase, and commands vector
-            /*
+/*
             for(loc_cmd = commands.begin(); loc_cmd < commands.end(); loc_cmd++){
                 cout << endl << "cmd: " << *loc_cmd << endl;
+
             }
-            */
+*/
             commands.clear();    //flush content of command vect
         }
         else                                    //input is one or more commands
@@ -102,14 +106,15 @@ int main()
             while (inputBuffer[end_cmd])  // scan the entire buffer to separe commands and tokens
             {
                if(inputBuffer[end_cmd] == ' ' && inputBuffer[end_cmd + 1] != '.' && inputBuffer[end_cmd + 1] != '#'
-                    && inputBuffer[end_cmd + 1] != '/' && inputBuffer[end_cmd + 1] != ' '){
+                    && inputBuffer[end_cmd + 1] != '/' && inputBuffer[end_cmd + 1] != '-'
+                    && inputBuffer[end_cmd + 1] != ' '){
 
                     cmd = inputBuffer.substr(front_cmd,end_cmd - front_cmd);
                     front_cmd = end_cmd + 1;    // this ignore the white space for the next comand when checking for the rest of
                                                 // the buffer
                     if(cmd != " ")
                         commands.push_back(cmd);
-//                    cout << endl << "***cmd: " << cmd << endl;
+ //                   cout << endl << "***cmd: " << cmd << endl;
                 }
                 end_cmd++;
             }
@@ -180,7 +185,6 @@ int main()
 
 void validCommand(vector<string> _commands, vector<char> _type)
 {
-
     vector<string>::iterator current_cmd;
     vector<char>::iterator loctype;
 
