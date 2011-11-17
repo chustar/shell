@@ -75,7 +75,6 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 	} else if(*cmdIter == "||"){
 		cmdIter++;
 		typeIter++;
-//        resolve_exec();
         waitpid(child, &res, 0);
 		if(neg) {
 			if (res > 0) res = 0;
@@ -137,7 +136,7 @@ void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
     } else {
         cmdIter--;
         if(wake_bg) {
-        if(!bg_process.empty()) {
+            if(!bg_process.empty()) {
                 tcsetpgrp(STDIN_FILENO, bg_process.back());
                 if (kill (- bg_process.back(), SIGCONT) < 0)
                         perror ("kill (SIGCONT)");
@@ -175,6 +174,11 @@ void fork_exec_pipe(string cmd, bool foreground, bool append, vector<string>::it
         stream_exec(cmdIter, vec);
         exit(0);
     }
+
+	while (cmdIter < vec.end() && *cmdIter != "&&" && *cmdIter != "||") {
+        cmdIter++;
+    }
+    cmdIter--;
 
     close(pipe_fd[0]);
     close(pipe_fd[1]);
@@ -344,18 +348,4 @@ pid_t fork_err_proc(bool append) {
     } else {
         return err_pid;
     }
-}
-
-void resolve_exec() {
-    long lSize = 10000;
-    char * buffer;
-    buffer = new char[lSize];
-
-    int len = read(out_fd[0], buffer, lSize);
-    string out(buffer);
-    cout << out;
-    len = read(err_fd[0], buffer, lSize);
-    out = string(buffer);
-    cout << out;
-    waitpid(child, &last_res, 0);
 }
