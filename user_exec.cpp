@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <sys/time.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include "user_exec.h"
@@ -18,6 +19,8 @@ int out_fd[2];
 int in_fd[2];
 int err_fd[2];
 string stream_file[3];
+
+vector<pid_t> bg_process;
 
 int STREAM_OUT = 0;
 int STREAM_IN = 1;
@@ -101,7 +104,9 @@ void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
     string cmd = *cmdIter;
     bool append = false;
 	bool foreground = true;
-	 while (cmdIter < vec.end() && *cmdIter != "&&" && *cmdIter != "||" && *cmdIter != "|") {
+	bool wake_bg = false;
+	int status;
+	while (cmdIter < vec.end() && *cmdIter != "&&" && *cmdIter != "||" && *cmdIter != "|") {
         if(*cmdIter == "<") {
             cmdIter++;
             stream_file[STREAM_IN] = *cmdIter;
@@ -121,9 +126,11 @@ void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
             append = true;
         } else if(*cmdIter == "&") {
 			foreground = false;
-    	}
-        cmdIter++;
-    }
+		} else if(*cmdIter == "fg") {
+			wake_bg = true;
+		}
+       	cmdIter++;
+   	}
     if(cmdIter < vec.end() && *cmdIter == "|") {
         cmdIter++;
         fork_exec_pipe(cmd, foreground, append, cmdIter, vec);
@@ -131,6 +138,21 @@ void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
         cmdIter--;
         fork_exec_bg(cmd, foreground, append);
     }
+    cmdIter--;
+    if(wake_bg) {
+	if(!bg_process.empty()) {
+			tcsetpgrp(STDIN_FILENO, bg_process.back());
+        	if (kill (- bg_process.back(), SIGCONT) < 0)
+             		perror ("kill (SIGCONT)");
+			waitpid(bg_process.back(), &status, 0);
+			bg_process.pop_back();
+
+			 /* Put the shell back in the foreground.  */
+       		tcsetpgrp (STDIN_FILENO, shell_pgid);
+		}
+	} else {
+		fork_exec_bg(cmd, foreground,append);
+	}
 }
 
 void fork_exec_pipe(string cmd, bool foreground, bool append, vector<string>::iterator &cmdIter, vector<string> &vec) {
@@ -249,6 +271,7 @@ void fork_exec_bg(string cmd, bool foreground, bool append) {
 
 		if(!foreground) {
 			setpgid(child,child);
+			bg_process.push_back(child);
 			waitpid(child, &status, WNOHANG);
 		} else {
         		waitpid(child, &last_res, 0);
