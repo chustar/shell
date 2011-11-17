@@ -37,8 +37,6 @@ int user_exec(vector<string> cmd, vector<char> types) {
                 stream_exec(cmdIter, cmd);
             }
         }
-    //    resolve_exec();
-      //  waitpid(child, &last_res, 0);
         return WEXITSTATUS(last_res);
     }
 }
@@ -103,28 +101,37 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 
 void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
     string cmd = *cmdIter;
+    bool append = false;
 	bool foreground = true;
 	 while (cmdIter < vec.end() && *cmdIter != "&&" && *cmdIter != "||") {
         if(*cmdIter == "<") {
             cmdIter++;
             stream_file[STREAM_IN] = *cmdIter;
-        } else if(*cmdIter == ">" || *cmdIter == ">>") {
+        } else if(*cmdIter == ">") {
             cmdIter++;
             stream_file[STREAM_OUT] = *cmdIter;
-        } else if(*cmdIter == "2>" || *cmdIter == "2>>") {
+        } else if(*cmdIter == ">>") {
+            cmdIter++;
+            stream_file[STREAM_OUT] = *cmdIter;
+            append = true;
+        } else if(*cmdIter == "2>") {
             cmdIter++;
             stream_file[ERR_OUT] = *cmdIter;
+        } else if(*cmdIter == "2>>") {
+            cmdIter++;
+            stream_file[ERR_OUT] = *cmdIter;
+            append = true;
         } else if(*cmdIter == "&") {
 			foreground = false;
-	}
-        	cmdIter++;
     	}
+       	cmdIter++;
+    }
     cmdIter--;
-    fork_exec_bg(cmd, foreground);
+    fork_exec_bg(cmd, foreground, append);
 }
 
 //johnny one note
-void fork_exec_bg(string cmd, bool foreground) {
+void fork_exec_bg(string cmd, bool foreground, bool append) {
 	int status;
 
     if (stream_file[STREAM_OUT] != "")
@@ -185,7 +192,7 @@ void fork_exec_bg(string cmd, bool foreground) {
 
         if (stream_file[STREAM_OUT] != "") {
             close(out_fd[1]);
-            out_pid = fork_out_proc();
+            out_pid = fork_out_proc(append);
             close(out_fd[0]);
         }
         if (stream_file[STREAM_IN] != "") {
@@ -195,7 +202,7 @@ void fork_exec_bg(string cmd, bool foreground) {
         }
        if (stream_file[ERR_OUT] != "") {
             close(err_fd[1]);
-            err_pid = fork_err_proc();
+            err_pid = fork_err_proc(append);
             close(err_fd[0]);
         }
 
@@ -219,7 +226,7 @@ void fork_exec_bg(string cmd, bool foreground) {
     }
 }
 
-pid_t fork_out_proc() {
+pid_t fork_out_proc(bool append) {
     pid_t out_pid;
     if((out_pid = fork()) == 0) {
         long lSize = 10000;
@@ -229,7 +236,7 @@ pid_t fork_out_proc() {
         int len = read(out_fd[0], buffer, lSize);
         string out(buffer);
 
-        ofstream fout(stream_file[STREAM_OUT].c_str(), ios_base::trunc);
+        ofstream fout(stream_file[STREAM_OUT].c_str(), append ? ios_base::app : ios_base::trunc);
         fout << out;
         close(out_fd[0]);
         fout.close();
@@ -265,7 +272,7 @@ pid_t fork_in_proc() {
     }
 }
 
-pid_t fork_err_proc() {
+pid_t fork_err_proc(bool append) {
     pid_t err_pid;
     if((err_pid = fork()) == 0) {
         long lSize = 10000;
@@ -275,7 +282,7 @@ pid_t fork_err_proc() {
         int len = read(err_fd[0], buffer, lSize);
         string out(buffer);
 
-        ofstream fout(stream_file[ERR_OUT].c_str(), ios_base::trunc);
+        ofstream fout(stream_file[ERR_OUT].c_str(), append ? ios_base::app : ios_base::trunc);
         fout << out;
 
         fout.close();
