@@ -37,7 +37,6 @@ int user_exec(vector<string> cmd, vector<char> types) {
                 stream_exec(cmdIter, cmd);
             }
         }
-    //    resolve_exec();
         waitpid(child, &last_res, 0);
         return WEXITSTATUS(last_res);
     }
@@ -137,7 +136,6 @@ void fork_exec_bg(string cmd) {
 		int i = 0;
 		cmdArg[i] = token;
 
-		//while this is not the last token
 		while(token != NULL) {
 			token = strtok(NULL, " \n");
 			cmdArg[++i] = token;
@@ -222,7 +220,7 @@ pid_t fork_in_proc() {
         }
 
         while(file.good()) {
-            getline(file, line, '=');
+            getline(file, line);
             if(file.good()) {
                 write(in_fd[1], line.c_str(), line.length());
             }
