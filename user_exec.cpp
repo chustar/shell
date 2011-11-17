@@ -84,7 +84,7 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 				typeIter++;
                 neg = true;
 			}
-			 stream_exec(cmdIter, cmdV);
+		    stream_exec(cmdIter, cmdV);
 		} else {
 			if (*cmdIter == "!") {
 				cmdIter++;
@@ -94,8 +94,6 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 			typeIter++;
 		}
 		neg = false;
-	} else if(*cmdIter == "|") {
-
 	}
 }
 
@@ -103,7 +101,7 @@ void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
     string cmd = *cmdIter;
     bool append = false;
 	bool foreground = true;
-	 while (cmdIter < vec.end() && *cmdIter != "&&" && *cmdIter != "||") {
+	 while (cmdIter < vec.end() && *cmdIter != "&&" && *cmdIter != "||" && *cmdIter != "|") {
         if(*cmdIter == "<") {
             cmdIter++;
             stream_file[STREAM_IN] = *cmdIter;
@@ -124,12 +122,45 @@ void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
         } else if(*cmdIter == "&") {
 			foreground = false;
     	}
-       	cmdIter++;
+        cmdIter++;
     }
-    cmdIter--;
-    fork_exec_bg(cmd, foreground, append);
+    if(cmdIter < vec.end() && *cmdIter == "|") {
+        cmdIter++;
+        fork_exec_pipe(cmd, foreground, append, cmdIter, vec);
+    } else {
+        cmdIter--;
+        fork_exec_bg(cmd, foreground, append);
+    }
 }
 
+void fork_exec_pipe(string cmd, bool foreground, bool append, vector<string>::iterator &cmdIter, vector<string> &vec) {
+    int res;
+    int pipe_fd[2];
+    pipe(pipe_fd);
+    pid_t src_pid;
+    pid_t dest_pid;
+
+    src_pid = fork();
+    if(src_pid == 0) {
+        close(pipe_fd[0]);
+        dup2(pipe_fd[1], 1);
+        fork_exec_bg(cmd, foreground, append);
+        exit(0);
+    }
+
+    dest_pid = fork();
+    if(dest_pid == 0) {
+        close(pipe_fd[1]);
+        dup2(pipe_fd[0], 0);
+        stream_exec(cmdIter, vec);
+        exit(0);
+    }
+
+    close(pipe_fd[0]);
+    close(pipe_fd[1]);
+    waitpid(src_pid, &res, 0);
+    waitpid(dest_pid, &res, 0);
+}
 //johnny one note
 void fork_exec_bg(string cmd, bool foreground, bool append) {
 	int status;
