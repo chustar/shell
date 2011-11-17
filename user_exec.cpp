@@ -20,7 +20,7 @@ int in_fd[2];
 int err_fd[2];
 string stream_file[3];
 
-vector<pid_t> bg_process;
+//vector<pid_t> bg_process;
 
 int STREAM_OUT = 0;
 int STREAM_IN = 1;
@@ -102,7 +102,9 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 
 void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
     string cmd = *cmdIter;
-    bool append = false;
+	string pos = "";
+    	int index = -1; //holds index of background process to bring to fg
+	bool append = false;
 	bool foreground = true;
 	bool wake_bg = false;
 	int status;
@@ -126,9 +128,17 @@ void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
             append = true;
         } else if(*cmdIter == "&") {
 			foreground = false;
-		} else if(*cmdIter == "fg") {
+	} else if(*cmdIter == "fg") {
 			wake_bg = true;
-		}
+	} else if((*cmdIter).compare(0,1,"%") == 0) {
+	//	printf("woot: %s\n",(cmdIter));
+		pos = *cmdIter;
+		//remove the % from the string
+		pos.replace(0,1,"");
+		index = atoi(pos.c_str());
+		cout << "woot: " << index << endl;
+		wake_bg = true;
+	}
        	cmdIter++;
    	}
     if(cmdIter < vec.end() && *cmdIter == "|") {
@@ -137,16 +147,8 @@ void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
     } else {
         cmdIter--;
         if(wake_bg) {
-        if(!bg_process.empty()) {
-                tcsetpgrp(STDIN_FILENO, bg_process.back());
-                if (kill (- bg_process.back(), SIGCONT) < 0)
-                        perror ("kill (SIGCONT)");
-                waitpid(bg_process.back(), &status, 0);
-                bg_process.pop_back();
-
-                 /* Put the shell back in the foreground.  */
-                tcsetpgrp (STDIN_FILENO, shell_pgid);
-            }
+	
+	launch_foreground(index);
         } else {
             fork_exec_bg(cmd, foreground,append);
         }
@@ -270,6 +272,7 @@ void fork_exec_bg(string cmd, bool foreground, bool append) {
 		if(!foreground) {
 			setpgid(child,child);
 			bg_process.push_back(child);
+			printf("[%d] %s\n", bg_process.capacity(), cmd.c_str());
 			waitpid(child, &status, WNOHANG);
 		} else {
         		waitpid(child, &last_res, 0);
