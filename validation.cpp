@@ -21,6 +21,7 @@
 #include "user_exec.h"
 #include "var.h"
 #include "remote_shell.h"
+#include "launch_process.h"
 
 #define COMMAND 'C'
 #define TOKEN 'T'
@@ -41,6 +42,7 @@ int main()
     vector<char>::iterator next_type;
 
     string currentCommand, nextCommand, systemVariable, token;
+//	init_shell();
 
     while(!fatal_error){
         string inputBuffer;

@@ -4,6 +4,6 @@
 #include <iostream>
 void init_shell(); //initialized the shell with the correct handling
 
-void launch_bg_process(std::string cmd); //launch a group of process
+void launch_process(std::string cmd); //launch a group of process
 
 #endif

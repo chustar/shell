@@ -37,7 +37,8 @@ int user_exec(vector<string> cmd, vector<char> types) {
                 stream_exec(cmdIter, cmd);
             }
         }
-        waitpid(child, &last_res, 0);
+    //    resolve_exec();
+      //  waitpid(child, &last_res, 0);
         return WEXITSTATUS(last_res);
     }
 }
@@ -102,7 +103,8 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 
 void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
     string cmd = *cmdIter;
-    while (cmdIter < vec.end() && *cmdIter != "&&" && *cmdIter != "||") {
+	bool foreground = true;
+	 while (cmdIter < vec.end() && *cmdIter != "&&" && *cmdIter != "||") {
         if(*cmdIter == "<") {
             cmdIter++;
             stream_file[STREAM_IN] = *cmdIter;
@@ -112,15 +114,19 @@ void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
         } else if(*cmdIter == "2>" || *cmdIter == "2>>") {
             cmdIter++;
             stream_file[ERR_OUT] = *cmdIter;
-        }
-        cmdIter++;
-    }
+        } else if(*cmdIter == "&") {
+			foreground = false;
+	}
+        	cmdIter++;
+    	}
     cmdIter--;
-    fork_exec_bg(cmd);
+    fork_exec_bg(cmd, foreground);
 }
 
 //johnny one note
-void fork_exec_bg(string cmd) {
+void fork_exec_bg(string cmd, bool foreground) {
+	int status;
+
     if (stream_file[STREAM_OUT] != "")
         pipe(out_fd);
     if (stream_file[STREAM_IN] != "")
@@ -128,14 +134,29 @@ void fork_exec_bg(string cmd) {
     if (stream_file[ERR_OUT] != "")
         pipe(err_fd);
 
-	child = fork();
+    child = fork();
     if(child == 0) {
         char *input = (char*)cmd.c_str();
-		char *cmdArg[100];
-		char *token = strtok(input, " \n");
-		int i = 0;
-		cmdArg[i] = token;
+        char *cmdArg[100];
+        char *token = strtok(input, " \n");
+        int i = 0;
+        pid_t childId;
+        cmdArg[i] = token;
 
+		/* Set the handling for job control signals back to the default.  */
+		signal (SIGINT, SIG_DFL);
+		signal (SIGQUIT, SIG_DFL);
+		signal (SIGTSTP, SIG_DFL);
+		signal (SIGTTIN, SIG_DFL);
+		signal (SIGTTOU, SIG_DFL);
+		signal (SIGCHLD, SIG_DFL);
+
+		if(!foreground) {
+			childId = getpid();
+			setpgid(childId,childId); //set child process in it's own group
+		}
+
+		//while this is not the last token
 		while(token != NULL) {
 			token = strtok(NULL, " \n");
 			cmdArg[++i] = token;
@@ -161,17 +182,21 @@ void fork_exec_bg(string cmd) {
         pid_t out_pid;
         pid_t in_pid;
         pid_t err_pid;
+
         if (stream_file[STREAM_OUT] != "") {
             close(out_fd[1]);
             out_pid = fork_out_proc();
+            close(out_fd[0]);
         }
         if (stream_file[STREAM_IN] != "") {
             close(in_fd[0]);
             in_pid = fork_in_proc();
+            close(in_fd[1]);
         }
        if (stream_file[ERR_OUT] != "") {
             close(err_fd[1]);
             err_pid = fork_err_proc();
+            close(err_fd[0]);
         }
 
         if (stream_file[STREAM_OUT] != "") {
@@ -184,6 +209,13 @@ void fork_exec_bg(string cmd) {
             waitpid(err_pid, &res, 0);
         }
 
+		if(!foreground) {
+			setpgid(child,child);
+			waitpid(child, &status, WNOHANG);
+		} else {
+        		waitpid(child, &last_res, 0);
+		}
+		waitpid(WAIT_ANY, &status, WNOHANG);
     }
 }
 
@@ -199,7 +231,7 @@ pid_t fork_out_proc() {
 
         ofstream fout(stream_file[STREAM_OUT].c_str(), ios_base::trunc);
         fout << out;
-
+        close(out_fd[0]);
         fout.close();
         delete [] buffer;
         exit(0);
@@ -226,6 +258,7 @@ pid_t fork_in_proc() {
             }
         }
         file.close();
+        close(in_fd[1]);
         exit(0);
     } else {
         return in_pid;
@@ -246,6 +279,7 @@ pid_t fork_err_proc() {
         fout << out;
 
         fout.close();
+        close(err_fd[0]);
         delete [] buffer;
         exit(0);
     } else {
