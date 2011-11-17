@@ -136,23 +136,21 @@ void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
         fork_exec_pipe(cmd, foreground, append, cmdIter, vec);
     } else {
         cmdIter--;
-        fork_exec_bg(cmd, foreground, append);
-    }
-    cmdIter--;
-    if(wake_bg) {
-	if(!bg_process.empty()) {
-			tcsetpgrp(STDIN_FILENO, bg_process.back());
-        	if (kill (- bg_process.back(), SIGCONT) < 0)
-             		perror ("kill (SIGCONT)");
-			waitpid(bg_process.back(), &status, 0);
-			bg_process.pop_back();
+        if(wake_bg) {
+        if(!bg_process.empty()) {
+                tcsetpgrp(STDIN_FILENO, bg_process.back());
+                if (kill (- bg_process.back(), SIGCONT) < 0)
+                        perror ("kill (SIGCONT)");
+                waitpid(bg_process.back(), &status, 0);
+                bg_process.pop_back();
 
-			 /* Put the shell back in the foreground.  */
-       		tcsetpgrp (STDIN_FILENO, shell_pgid);
-		}
-	} else {
-		fork_exec_bg(cmd, foreground,append);
-	}
+                 /* Put the shell back in the foreground.  */
+                tcsetpgrp (STDIN_FILENO, shell_pgid);
+            }
+        } else {
+            fork_exec_bg(cmd, foreground,append);
+        }
+    }
 }
 
 void fork_exec_pipe(string cmd, bool foreground, bool append, vector<string>::iterator &cmdIter, vector<string> &vec) {
