@@ -42,7 +42,7 @@ int main()
     vector<char>::iterator next_type;
 
     string currentCommand, nextCommand, systemVariable, token;
-//	init_shell();
+	init_shell();
 
     while(!fatal_error){
         string inputBuffer;

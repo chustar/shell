@@ -19,6 +19,8 @@ int in_fd[2];
 int err_fd[2];
 string stream_file[3];
 
+vector<pid_t> bg_process;
+
 int STREAM_OUT = 0;
 int STREAM_IN = 1;
 int ERR_OUT = 2;
@@ -104,7 +106,9 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
     string cmd = *cmdIter;
 	bool foreground = true;
-	 while (cmdIter < vec.end() && *cmdIter != "&&" && *cmdIter != "||") {
+	bool wake_bg = false;
+	int status;
+	while (cmdIter < vec.end() && *cmdIter != "&&" && *cmdIter != "||") {
         if(*cmdIter == "<") {
             cmdIter++;
             stream_file[STREAM_IN] = *cmdIter;
@@ -116,11 +120,26 @@ void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
             stream_file[ERR_OUT] = *cmdIter;
         } else if(*cmdIter == "&") {
 			foreground = false;
+	} else if(*cmdIter == "fg") {
+		wake_bg = true;
 	}
         	cmdIter++;
     	}
     cmdIter--;
-    fork_exec_bg(cmd, foreground);
+    if(wake_bg) {
+		if(bg_process.back() != 0) {
+		tcsetpgrp(STDIN_FILENO, bg_process.back());
+        	if (kill (- bg_process.back(), SIGCONT) < 0)
+             		perror ("kill (SIGCONT)");	
+		waitpid(bg_process.back(), &status, 0);
+		bg_process.pop_back();
+
+		 /* Put the shell back in the foreground.  */
+       		tcsetpgrp (STDIN_FILENO, shell_pgid);	
+		}
+	} else {
+		fork_exec_bg(cmd, foreground);
+	}
 }
 
 //johnny one note
@@ -211,6 +230,7 @@ void fork_exec_bg(string cmd, bool foreground) {
 
 		if(!foreground) {
 			setpgid(child,child);
+			bg_process.push_back(child);		
 			waitpid(child, &status, WNOHANG);
 		} else {
         		waitpid(child, &last_res, 0);
