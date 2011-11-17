@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <sys/time.h>
+#include <stdlib.h>
 #include <string.h>
 #include "user_exec.h"
 #include "launch_process.h"

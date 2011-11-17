@@ -124,7 +124,7 @@ int main()
                                                 // the buffer
                     if(cmd != " ")
                         commands.push_back(cmd);
-                    cout << endl << "***cmd: " << cmd << endl;
+                //    cout << endl << "***cmd: " << cmd << endl;
                 }
                 end_cmd++;
             }
@@ -180,8 +180,8 @@ int main()
             }
             if (!grammar_error){
 
-             //   user_exec(commands,type);          // send vector command to user_exec.cpp   ***uncomment ***
-               validCommand(commands,type);
+                user_exec(commands,type);          // send vector command to user_exec.cpp   ***uncomment ***
+             //  validCommand(commands,type);
 
             }
                 commands.clear();    //flush content of command vector
