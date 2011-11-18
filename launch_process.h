@@ -4,6 +4,8 @@
 #include <iostream>
 #include <termios.h>
 #include <vector>
+#include "user_exec.h"
+
 using namespace std;
 extern pid_t shell_pgid;
 extern struct termios shell_tmodes;
@@ -19,6 +21,17 @@ extern pid_t exit_pid;	//holds the id of exit process from waitpid
 
 extern vector<string> history;
 extern vector<int> history_status;
+
+struct BGDATA {
+	bool compound;		//true if bg_cmd_process is multiple instr
+	vector<string> cmd;	//holds commands to be process through history
+	vector<char> type;	//holds the types of the command
+};
+
+extern BGDATA temp;		//holds a template to pushback inot vector
+extern vector<BGDATA> bg_dataV;
+
+extern bool G_BG_FLAG;
 
 void init_shell(); //initialized the shell with the correct handling
 

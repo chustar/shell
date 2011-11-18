@@ -21,6 +21,10 @@ vector<int> bg_status;
 
 vector<string> history;
 vector<int> history_status;
+vector<BGDATA> bg_dataV;
+BGDATA temp;
+
+bool G_BG_FLAG = false;	//global background flag assumption: if there's one & then all is &
 
 void init_shell() {
 
@@ -99,7 +103,9 @@ void launch_process(std::string cmd, bool foreground) {
 }
 
 void launch_foreground(int index) {
-
+	string cmd;
+	vector<string> cmdV;
+	vector<string> tV;	
 	int status;
 	pid_t proc;
                                 
@@ -116,29 +122,40 @@ void launch_foreground(int index) {
         if(!bg_process.empty()) {
 		if(index < 0) { //if less then zero it's fg command
 			proc = bg_process.back();
+			cmd = bg_cmd_process.back();
 			tcsetpgrp(STDIN_FILENO, proc);
                 	if (kill (- proc, SIGCONT) < 0)
                         	perror ("kill (SIGCONT)");
                 	waitpid(proc, &status, 0);
-                	cout << "[" << bg_process.capacity() << "] " <<  bg_process.back() << " " << bg_cmd_process.back() << endl; 	
+                	cout << "[" << bg_process.size() << "] " <<  bg_process.back() << " " << bg_cmd_process.back() << endl; 	
 			bg_process.pop_back();	//pop the id
 			bg_cmd_process.pop_back(); //pop the cmd
-
-                 	/* Put the shell back in the foreground.  */
+                 
+			/* Put the shell back in the foreground.  */
                 	tcsetpgrp (STDIN_FILENO, shell_pgid);
-        	} else { //indexing into background process
+			
+			//check to see if we need a compound action	
+			if((bg_dataV.back().compound)) 
+				user_exec((bg_dataV.back().cmd), bg_dataV.back().type);	
+			bg_dataV.pop_back();
+
+        		
+		} else { //indexing into background process
 			//check if index is out of range
 			if(index < 0 || index > (int)bg_process.size())
 				return;
 			
 			proc = bg_process[index-1];
+			cmd = bg_cmd_process[index-1];
 			tcsetpgrp(STDIN_FILENO, proc);
                 	if (kill (- proc, SIGCONT) < 0)
                         	perror ("kill (SIGCONT)");
                 	waitpid(proc, &status, 0);
                 	bg_process.erase(bg_process.begin()+(index-1));
 			bg_cmd_process.erase(bg_cmd_process.begin()+(index-1)); //removed hte cmd vector as well
-                 	/* Put the shell back in the foreground.  */
+                 
+			bg_dataV.erase(bg_dataV.begin()+(index-1)); // dataV
+			/* Put the shell back in the foreground.  */
                 	tcsetpgrp (STDIN_FILENO, shell_pgid);
 			
 		}
@@ -162,6 +179,13 @@ void display_jobs() {
 	for(int i = 0 ; i < bg_process.size(); i++) {
 		state = get_state(bg_status[i]);
 		cout << "[" << i+1 << "] " << state << " " << bg_process[i] << " " << bg_cmd_process[i] << endl;
+
+		if(bg_dataV[i].compound) {
+			for(int j = 0; j < bg_dataV[i].cmd.size(); j++) {
+				cout<< "cmd: " << bg_dataV[i].cmd[j] << " type: " << bg_dataV[i].type[j] << endl;
+			}
+		
+		}
 	}
 
 }
@@ -175,14 +199,14 @@ void check_bg_status() {
 		//so kill process 
 		if(exit_pid < 0 ) {
 			state = get_state(status); //print exit status when we remove process
-			cout<<"["<< (i+1) << "] " << state << " " << bg_process[i] << " "<< bg_cmd_process[i] << endl;
+			//cout<<"["<< (i+1) << "] " << state << " " << bg_process[i] << " "<< bg_cmd_process[i] << endl;
                 	bg_process.erase(bg_process.begin()+i);
                 	bg_cmd_process.erase(bg_cmd_process.begin()+i);
                 	bg_status.erase(bg_status.begin()+i);
 		} else if (exit_pid > 0) { //process changed state so updated
 			bg_status[i] = status;	
 			state = get_state(status);
-			cout<<"["<< (i+1) << "] " << state << " " << bg_process[i] << " " << bg_cmd_process[i] << endl;
+			//cout<<"["<< (i+1) << "] " << state << " " << bg_process[i] << " " << bg_cmd_process[i] << endl;
 		} else { //process did not change state
 			state = get_state(status);
 //			cout<< exit_pid << " " << state << " " << endl;
