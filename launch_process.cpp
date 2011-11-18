@@ -35,13 +35,13 @@ void init_shell() {
                         kill(-shell_pgid, SIGTTIN);
 
                 /*Ignore interactive and job-control signals. */
-                signal(SIGINT, SIG_IGN);
+     /*           signal(SIGINT, SIG_IGN);
                 signal(SIGQUIT, SIG_IGN);
                 signal(SIGTSTP, SIG_IGN);
                 signal(SIGTTIN, SIG_IGN);
                 signal(SIGTTOU, SIG_IGN);
                 signal(SIGCHLD, SIG_IGN);
-
+*/
                /* Put ourselves in our own process group. */
                 shell_pgid = getpid();
                 if(setpgid(shell_pgid, shell_pgid) < 0) {
@@ -102,6 +102,16 @@ void launch_foreground(int index) {
 
 	int status;
 	pid_t proc;
+                                
+     	signal(SIGINT, SIG_IGN);
+        signal(SIGQUIT, SIG_IGN);
+        signal(SIGTSTP, SIG_IGN);
+        signal(SIGTTIN, SIG_IGN);
+        signal(SIGTTOU, SIG_IGN);
+        signal(SIGCHLD, SIG_IGN);
+
+
+
 //need to handle bg process that exit already and should add this part into a function
         if(!bg_process.empty()) {
 		if(index < 0) { //if less then zero it's fg command
@@ -110,7 +120,7 @@ void launch_foreground(int index) {
                 	if (kill (- proc, SIGCONT) < 0)
                         	perror ("kill (SIGCONT)");
                 	waitpid(proc, &status, 0);
-                	cout << "[" << bg_process.capacity() << "] " << bg_cmd_process.back() << endl; 	
+                	cout << "[" << bg_process.capacity() << "] " <<  bg_process.back() << " " << bg_cmd_process.back() << endl; 	
 			bg_process.pop_back();	//pop the id
 			bg_cmd_process.pop_back(); //pop the cmd
 
@@ -134,6 +144,14 @@ void launch_foreground(int index) {
 		}
 	}
 
+
+	signal (SIGINT, SIG_DFL);
+	signal (SIGQUIT, SIG_DFL);
+	signal (SIGTSTP, SIG_DFL);
+	signal (SIGTTIN, SIG_DFL);
+	signal (SIGTTOU, SIG_DFL);
+	signal (SIGCHLD, SIG_DFL);
+
 }
 
 
@@ -143,7 +161,7 @@ void display_jobs() {
 
 	for(int i = 0 ; i < bg_process.size(); i++) {
 		state = get_state(bg_status[i]);
-		cout << "[" << i+1 << "] " << state << " " << bg_cmd_process[i] << endl;
+		cout << "[" << i+1 << "] " << state << " " << bg_process[i] << " " << bg_cmd_process[i] << endl;
 	}
 
 }
@@ -157,12 +175,14 @@ void check_bg_status() {
 		//so kill process 
 		if(exit_pid < 0 ) {
 			state = get_state(status); //print exit status when we remove process
-//			cout<<"["<< (i+1) << "] " << state << " " << bg_cmd_process[i] << endl;
+			cout<<"["<< (i+1) << "] " << state << " " << bg_process[i] << " "<< bg_cmd_process[i] << endl;
                 	bg_process.erase(bg_process.begin()+i);
                 	bg_cmd_process.erase(bg_cmd_process.begin()+i);
                 	bg_status.erase(bg_status.begin()+i);
 		} else if (exit_pid > 0) { //process changed state so updated
 			bg_status[i] = status;	
+			state = get_state(status);
+			cout<<"["<< (i+1) << "] " << state << " " << bg_process[i] << " " << bg_cmd_process[i] << endl;
 		} else { //process did not change state
 			state = get_state(status);
 //			cout<< exit_pid << " " << state << " " << endl;

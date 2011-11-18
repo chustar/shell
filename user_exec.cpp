@@ -29,38 +29,62 @@ int ERR_OUT = 2;
 int user_exec(vector<string> cmd, vector<char> types) {
 	vector<string>::iterator cmdIter;
 	vector<char>::iterator typeIter;
-	
+	bool fg = true; //holds flag if last process is in fg
+	string state;
+
 	check_bg_status();
  	store_history(cmd);
 	if(cmd.size() != 0 && cmd[0] != "") {
         for(cmdIter = cmd.begin(), typeIter = types.begin(); cmdIter < cmd.end(); ++cmdIter, ++typeIter) {
             if(*typeIter == 'T') {
-                token_exec(cmdIter, typeIter, cmd);
+                token_exec(cmdIter, typeIter, cmd, fg);
             } else if(*typeIter == 'C') {
                 stream_file[0] = "";
                 stream_file[1] = "";
                 stream_file[2] = "";
-                stream_exec(cmdIter, cmd);
+                fg = stream_exec(cmdIter, cmd);
             }
         }
-        return WEXITSTATUS(last_res);
+    	if(fg) {   
+			exit_pid = waitpid(child, &last_res, 0); //blocking wait for fg
+        } else {
+			exit_pid = waitpid(child, &last_res, WUNTRACED | WCONTINUED | WNOHANG);
+			bg_status.push_back(last_res);
+			state = get_state(last_res);
+			//cout<< exit_pid << " " << last_res << " " << state << " " << endl;	
+			//take care of condition when we access waitpid twice
+			while(bg_status.size() != bg_process.size()) {
+				bg_status.pop_back();
+			}
+		}
+
+		return WEXITSTATUS(last_res);
     }
 }
 
-bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeIter, vector<string> &cmdV) {
+bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeIter, vector<string> &cmdV, bool fg) {
 	int res = 0;
+	string state;
     if(*cmdIter == "!") {                               //handle NOT condition
 		neg = true;
 	} else if(*cmdIter == "&&") {                       //handle AND condition
         cmdIter++;                                      //look ahead to the next command
 		typeIter++;                                     //look ahead to the next typeIter
-        waitpid(child, &res, 0);                        //check the status of the last run command
+		if(fg) {
+        	waitpid(child, &res, 0);                        //check the status of the last run command
+		} else {
+                   //check the status of the last run command
+			exit_pid = waitpid(child, &res, WUNTRACED);
+			bg_status.push_back(res);
+			state = get_state(res);
+		//	cout<< exit_pid << " " << res << " " << state << " " << endl;	
+		}
 		if(neg) {                                       //flip the response of the last command if negate was set.
 			if (res > 0) res = 0;
 			else if (res == 0) res = 1;
             neg = false;
-		}
-		if (res == 0) {                                 //if the last guy worked, execute it and leave it in the background
+		} //256 is the return  number for exit(1) from ubuntu
+		if (res == 0 || (res != 256 && res > 0)) {                                 //if the last guy worked, execute it and leave it in the background
 			if (*cmdIter == "!") {                      //handle a not condition before the next line
 				cmdIter++;
 				typeIter++;
@@ -78,12 +102,19 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 	} else if(*cmdIter == "||"){
 		cmdIter++;
 		typeIter++;
-        waitpid(child, &res, 0);
+        if(fg) {
+			exit_pid = waitpid(child, &res, 0);
+		} else {
+			exit_pid = waitpid(child, &res, WUNTRACED);
+			bg_status.push_back(res);
+			state = get_state(res);
+			//cout<< exit_pid << " " << res << " " << state << " " << endl;	
+		}
 		if(neg) {
 			if (res > 0) res = 0;
 			else if (res == 0) res = 1;
-		}
-		if (res != 0) {
+		} //256 is the number returned on the ubuntu machine with exit(1)
+		if (res != 0 & res == 256) { //if command is invalid run second command which we set with exit
 			if (*cmdIter == "!") {
 				cmdIter++;
 				typeIter++;
@@ -102,7 +133,7 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 	}
 }
 
-void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
+bool stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
     string cmd = *cmdIter;
 	string pos = "";
     	int index = -1; //holds index of background process to bring to fg
@@ -142,10 +173,10 @@ void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
 		wake_bg = true;
 	} else if(*cmdIter == "jobs") {
 		display_jobs();	
-		return; //only display background jobs		
+		return false; //only display background jobs		
 	} else if (*cmdIter == "history") {
 		display_history();
-		return;
+		return false; //do not wait on these commands
 	}
        	cmdIter++;
    	}
@@ -162,6 +193,7 @@ void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
             fork_exec_bg(cmd, foreground,append);
         }
     }
+	return foreground;
 }
 
 void fork_exec_pipe(string cmd, bool foreground, bool append, vector<string>::iterator &cmdIter, vector<string> &vec) {
@@ -218,13 +250,13 @@ void fork_exec_bg(string cmd, bool foreground, bool append) {
         pid_t childId;
         cmdArg[i] = token;
 
-		/* Set the handling for job control signals back to the default.  */
+		/* Set the handling for job control signals back to the default.  
 		signal (SIGINT, SIG_DFL);
 		signal (SIGQUIT, SIG_DFL);
 		signal (SIGTSTP, SIG_DFL);
 		signal (SIGTTIN, SIG_DFL);
 		signal (SIGTTOU, SIG_DFL);
-		signal (SIGCHLD, SIG_DFL);
+		signal (SIGCHLD, SIG_DFL); */
 
 		if(!foreground) {
 			childId = getpid();
@@ -250,9 +282,8 @@ void fork_exec_bg(string cmd, bool foreground, bool append) {
             close(err_fd[0]);
             dup2(err_fd[1], 2);
         }
-
         execvp(cmdArg[0], cmdArg);
-	exit(0); //will exit if it's an invalid command
+	exit(1); //will exit if it's an invalid command
 	} else {
         int res;
         pid_t out_pid;
@@ -289,13 +320,14 @@ void fork_exec_bg(string cmd, bool foreground, bool append) {
 			setpgid(child,child);
 			bg_process.push_back(child);
 			bg_cmd_process.push_back(cmd.c_str());
-			printf("[%d] %s\n", bg_process.size(), cmd.c_str());
-			exit_pid = waitpid(child, &status, WUNTRACED | WCONTINUED);
+			printf("[%d] %d %s\n", bg_process.size(), child, cmd.c_str());
+			/*exit_pid = waitpid(child, &status, WUNTRACED | WCONTINUED);
 			bg_status.push_back(status);
 			state = get_state(status);
-			//cout<< exit_pid << " " << state << " " << endl;	
-		} else {
-        		exit_pid = waitpid(child, &last_res, 0); //blocking wait for fg
+			cout<< exit_pid << " " << status << " " << state << " " << endl;	
+		*/} else {
+      // 		exit_pid = waitpid(child, &last_res, 0); //blocking wait for fg
+	//		cout<< exit_pid << "<-id  " << last_res << "<-status " << endl;	
 		}
 	//	exit_pid = waitpid(WAIT_ANY, &status, WNOHANG);
 	}
