@@ -1,14 +1,10 @@
 #include <iostream>
 #include <fstream>
 #include <stdlib.h>
-
+#include <string.h>
 #include "var.h"
 
 using namespace std;
-
-int load_vars();
-string get_var(string);
-int set_var(string, string);
 
 int load_vars() {
 	int res;
@@ -32,10 +28,34 @@ int load_vars() {
 	return res;
 }
 
+string find_replace_vars(string &cmd) {
+    string start;
+    string middle;
+    string end;
+    size_t pos;
+    size_t spos;
+    pos = cmd.find_first_of('$', 0);
+    if(pos != cmd.npos) {
+        spos = ++pos;
+        while(isalnum(cmd[spos++]));
+        start = cmd.substr(0, pos-1);
+        middle = get_var(cmd.substr(pos, spos-pos-1));
+        if(spos < cmd.length()){
+            end = cmd.substr(spos);
+            end = find_replace_vars(end);
+           return start + middle + end;
+        } else {
+            return start + middle;
+        }
+    } else {
+        return cmd;
+    }
+}
+
 string get_var(string name) {
 	char *res = getenv(name.c_str());
 	if(res != NULL) return string(res);
-	else cerr << name << " failed" << endl;
+	else cerr << name << "Failed" << endl;
 }
 
 int set_var(string name, string value) {

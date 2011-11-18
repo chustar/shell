@@ -5,13 +5,16 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <vector>
 #include "launch_process.h"
-
+using namespace std;
 
 pid_t shell_pgid;
 struct termios shell_tmodes;
 int shell_terminal;
 int shell_is_interactive;
+
+vector<pid_t> bg_process;
 
 void init_shell() {
 
@@ -88,4 +91,43 @@ void launch_process(std::string cmd, bool foreground) {
 
 
 }
+
+void launch_foreground(int index) {
+
+	int status;
+	pid_t proc;
+//need to handle bg process that exit already and should add this part into a function
+        if(!bg_process.empty()) {
+		if(index < 0) { //if less then zero it's fg command
+			proc = bg_process.back();
+			tcsetpgrp(STDIN_FILENO, proc);
+                	if (kill (- proc, SIGCONT) < 0)
+                        	perror ("kill (SIGCONT)");
+                	waitpid(proc, &status, 0);
+                	bg_process.pop_back();
+
+                 	/* Put the shell back in the foreground.  */
+                	tcsetpgrp (STDIN_FILENO, shell_pgid);
+        	} else { //indexing into background process
+			//check if index is out of range
+			if(index < 0 || index > (int)bg_process.capacity())
+				return;
+			
+			proc = bg_process[index-1];
+			tcsetpgrp(STDIN_FILENO, proc);
+                	if (kill (- proc, SIGCONT) < 0)
+                        	perror ("kill (SIGCONT)");
+                	waitpid(proc, &status, 0);
+                	bg_process.erase(bg_process.begin()+(index-1));
+
+                 	/* Put the shell back in the foreground.  */
+                	tcsetpgrp (STDIN_FILENO, shell_pgid);
+			
+		}
+	}
+
+}
+
+
+
 
