@@ -14,7 +14,13 @@ struct termios shell_tmodes;
 int shell_terminal;
 int shell_is_interactive;
 
-vector<pid_t> bg_process;
+vector<pid_t> bg_process;	//holds the pid_t of the bg process
+vector<string> bg_cmd_process;	//holds the name of the cmd in parallel with bg_process
+pid_t exit_pid;
+vector<int> bg_status;
+
+vector<string> history;
+vector<int> history_status;
 
 void init_shell() {
 
@@ -104,13 +110,15 @@ void launch_foreground(int index) {
                 	if (kill (- proc, SIGCONT) < 0)
                         	perror ("kill (SIGCONT)");
                 	waitpid(proc, &status, 0);
-                	bg_process.pop_back();
+                	cout << "[" << bg_process.capacity() << "] " << bg_cmd_process.back() << endl; 	
+			bg_process.pop_back();	//pop the id
+			bg_cmd_process.pop_back(); //pop the cmd
 
                  	/* Put the shell back in the foreground.  */
                 	tcsetpgrp (STDIN_FILENO, shell_pgid);
         	} else { //indexing into background process
 			//check if index is out of range
-			if(index < 0 || index > (int)bg_process.capacity())
+			if(index < 0 || index > (int)bg_process.size())
 				return;
 			
 			proc = bg_process[index-1];
@@ -119,7 +127,7 @@ void launch_foreground(int index) {
                         	perror ("kill (SIGCONT)");
                 	waitpid(proc, &status, 0);
                 	bg_process.erase(bg_process.begin()+(index-1));
-
+			bg_cmd_process.erase(bg_cmd_process.begin()+(index-1)); //removed hte cmd vector as well
                  	/* Put the shell back in the foreground.  */
                 	tcsetpgrp (STDIN_FILENO, shell_pgid);
 			
@@ -129,5 +137,74 @@ void launch_foreground(int index) {
 }
 
 
+void display_jobs() {
 
+	string state;
+
+	for(int i = 0 ; i < bg_process.size(); i++) {
+		state = get_state(bg_status[i]);
+		cout << "[" << i+1 << "] " << state << " " << bg_cmd_process[i] << endl;
+	}
+
+}
+
+void check_bg_status() {
+	int status;
+	string state;
+	for(int i = 0; i < bg_process.size(); i++) {
+	        exit_pid = waitpid(bg_process[i], &status, WUNTRACED | WCONTINUED | WNOHANG);
+               	//if less then zero, process error meaning it doesn't exist 
+		//so kill process 
+		if(exit_pid < 0 ) {
+			state = get_state(status); //print exit status when we remove process
+//			cout<<"["<< (i+1) << "] " << state << " " << bg_cmd_process[i] << endl;
+                	bg_process.erase(bg_process.begin()+i);
+                	bg_cmd_process.erase(bg_cmd_process.begin()+i);
+                	bg_status.erase(bg_status.begin()+i);
+		} else if (exit_pid > 0) { //process changed state so updated
+			bg_status[i] = status;	
+		} else { //process did not change state
+			state = get_state(status);
+//			cout<< exit_pid << " " << state << " " << endl;
+		}
+	}
+}
+
+string get_state(int status) {
+
+                if( WIFEXITED(status) ) { 
+                	return "T";
+		}   
+                if (WIFSIGNALED(status) ) { 
+                	return "T+";
+		}   
+                if (WIFSTOPPED(status)) {
+                	return "S";
+		}   
+                if (WIFCONTINUED(status) ) { 
+                	return "C";
+		}   
+
+}
+
+void store_history(vector<string> cmd) {
+	string c;
+	vector<string>::iterator cmdIter;
+	
+	for(cmdIter = cmd.begin(); cmdIter < cmd.end(); ++cmdIter) {
+		c += *cmdIter;
+		c += " ";
+	}
+	history.push_back(c);
+}
+
+void display_history() {
+
+	vector<string>::iterator historyIter;
+	int count = 0;
+	for(historyIter = history.begin(); historyIter < history.end(); ++historyIter) {
+		cout<< count << ": " << *historyIter << endl;
+		count++;
+	}
+}
 

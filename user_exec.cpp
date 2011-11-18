@@ -29,7 +29,10 @@ int ERR_OUT = 2;
 int user_exec(vector<string> cmd, vector<char> types) {
 	vector<string>::iterator cmdIter;
 	vector<char>::iterator typeIter;
-    if(cmd.size() != 0 && cmd[0] != "") {
+	
+	check_bg_status();
+ 	store_history(cmd);
+	if(cmd.size() != 0 && cmd[0] != "") {
         for(cmdIter = cmd.begin(), typeIter = types.begin(); cmdIter < cmd.end(); ++cmdIter, ++typeIter) {
             if(*typeIter == 'T') {
                 token_exec(cmdIter, typeIter, cmd);
@@ -138,6 +141,12 @@ void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
 		index = atoi(pos.c_str());
 		cout << "woot: " << index << endl;
 		wake_bg = true;
+	} else if(*cmdIter == "jobs") {
+		display_jobs();	
+		return; //only display background jobs		
+	} else if (*cmdIter == "history") {
+		display_history();
+		return;
 	}
        	cmdIter++;
    	}
@@ -146,7 +155,7 @@ void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
         fork_exec_pipe(cmd, foreground, append, cmdIter, vec);
     } else {
         cmdIter--;
-        if(wake_bg) {
+        if(wake_bg) { //if it's moving a bg process to fg
 	
 	launch_foreground(index);
         } else {
@@ -186,6 +195,7 @@ void fork_exec_pipe(string cmd, bool foreground, bool append, vector<string>::it
 //johnny one note
 void fork_exec_bg(string cmd, bool foreground, bool append) {
 	int status;
+	string state;
 
     if (stream_file[STREAM_OUT] != "")
         pipe(out_fd);
@@ -237,6 +247,7 @@ void fork_exec_bg(string cmd, bool foreground, bool append) {
         }
 
         execvp(cmdArg[0], cmdArg);
+	exit(0); //will exit if it's an invalid command
 	} else {
         int res;
         pid_t out_pid;
@@ -272,13 +283,17 @@ void fork_exec_bg(string cmd, bool foreground, bool append) {
 		if(!foreground) {
 			setpgid(child,child);
 			bg_process.push_back(child);
-			printf("[%d] %s\n", bg_process.capacity(), cmd.c_str());
-			waitpid(child, &status, WNOHANG);
+			bg_cmd_process.push_back(cmd.c_str());
+			printf("[%d] %s\n", bg_process.size(), cmd.c_str());
+			exit_pid = waitpid(child, &status, WUNTRACED | WCONTINUED);
+			bg_status.push_back(status);
+			state = get_state(status);
+			//cout<< exit_pid << " " << state << " " << endl;	
 		} else {
-        		waitpid(child, &last_res, 0);
+        		exit_pid = waitpid(child, &last_res, 0); //blocking wait for fg
 		}
-		waitpid(WAIT_ANY, &status, WNOHANG);
-    }
+	//	exit_pid = waitpid(WAIT_ANY, &status, WNOHANG);
+	}
 }
 
 pid_t fork_out_proc(bool append) {
