@@ -55,6 +55,8 @@ int main()
         if (inputBuffer == "exit")
             return 0;
 
+        find_replace_files(inputBuffer);    //call a function to replace data files as needed
+        find_replace_vars(inputBuffer);   //call a function to replace variables as needed
         inputBuffer.append(" "); // append space at the end of string; otherwise, last command will not be read
         int front_cmd = 0, end_cmd = 0;             //iterators for input string
 

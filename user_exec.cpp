@@ -78,7 +78,6 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 	} else if(*cmdIter == "||"){
 		cmdIter++;
 		typeIter++;
-//        resolve_exec();
         waitpid(child, &res, 0);
 		if(neg) {
 			if (res > 0) res = 0;
@@ -155,9 +154,10 @@ void stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
         fork_exec_pipe(cmd, foreground, append, cmdIter, vec);
     } else {
         cmdIter--;
-        if(wake_bg) { //if it's moving a bg process to fg
+        
+	if(wake_bg) { //if it's moving a bg process to fg
 	
-	launch_foreground(index);
+		launch_foreground(index);
         } else {
             fork_exec_bg(cmd, foreground,append);
         }
@@ -186,6 +186,11 @@ void fork_exec_pipe(string cmd, bool foreground, bool append, vector<string>::it
         stream_exec(cmdIter, vec);
         exit(0);
     }
+
+	while (cmdIter < vec.end() && *cmdIter != "&&" && *cmdIter != "||") {
+        cmdIter++;
+    }
+    cmdIter--;
 
     close(pipe_fd[0]);
     close(pipe_fd[1]);
@@ -362,18 +367,4 @@ pid_t fork_err_proc(bool append) {
     } else {
         return err_pid;
     }
-}
-
-void resolve_exec() {
-    long lSize = 10000;
-    char * buffer;
-    buffer = new char[lSize];
-
-    int len = read(out_fd[0], buffer, lSize);
-    string out(buffer);
-    cout << out;
-    len = read(err_fd[0], buffer, lSize);
-    out = string(buffer);
-    cout << out;
-    waitpid(child, &last_res, 0);
 }
