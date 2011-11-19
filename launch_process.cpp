@@ -104,8 +104,9 @@ void launch_process(std::string cmd, bool foreground) {
 
 void launch_foreground(int index) {
 	string cmd;
+	bool c = false;
 	vector<string> cmdV;
-	vector<string> tV;	
+	vector<char> tV;	
 	int status;
 	pid_t proc;
                                 
@@ -132,13 +133,24 @@ void launch_foreground(int index) {
 			bg_cmd_process.pop_back(); //pop the cmd
                  
 			/* Put the shell back in the foreground.  */
-                	tcsetpgrp (STDIN_FILENO, shell_pgid);
+            tcsetpgrp (STDIN_FILENO, shell_pgid);
 			
-			//check to see if we need a compound action	
-			if((bg_dataV.back().compound)) 
-				user_exec((bg_dataV.back().cmd), bg_dataV.back().type);	
-			bg_dataV.pop_back();
 
+	signal (SIGINT, SIG_DFL);
+	signal (SIGQUIT, SIG_DFL);
+	signal (SIGTSTP, SIG_DFL);
+	signal (SIGTTIN, SIG_DFL);
+	signal (SIGTTOU, SIG_DFL);
+	signal (SIGCHLD, SIG_DFL);
+			for(int i = 0 ; i < (bg_dataV.back().cmd.size()); i++) {
+				cmdV.push_back((bg_dataV.back().cmd[i]));
+				tV.push_back((bg_dataV.back().type[i]));
+			}
+			c = bg_dataV.back().compound; 
+			bg_dataV.pop_back();
+			//check to see if we need a compound action	
+			if(c) 
+				user_exec(cmdV,tV );	
         		
 		} else { //indexing into background process
 			//check if index is out of range

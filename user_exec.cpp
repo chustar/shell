@@ -163,7 +163,7 @@ bool stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
 	string pos = "";
     	int index = -1; //holds index of background process to bring to fg
 	bool append = false;
-	bool foreground = true;
+	bool foreground = !G_BG_FLAG;
 	bool wake_bg = false;
 	int status;
 	while (cmdIter < vec.end() && *cmdIter != "&&" && *cmdIter != "||" && *cmdIter != "|") {
