@@ -149,9 +149,10 @@ void launch_foreground(int index) {
 			c = bg_dataV.back().compound; 
 			bg_dataV.pop_back();
 			//check to see if we need a compound action	
-			if(c) 
+			if(c) { 
+				G_BG_FLAG = true;
 				user_exec(cmdV,tV );	
-        		
+        	}	
 		} else { //indexing into background process
 			//check if index is out of range
 			if(index < 0 || index > (int)bg_process.size())

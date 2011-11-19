@@ -215,7 +215,8 @@ bool stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
 	if(wake_bg) { //if it's moving a bg process to fg
 	
 		launch_foreground(index);
-        } else {
+       		return false;	//make sure we're not stuck in foreground
+	 } else {
             fork_exec_bg(cmd, foreground,append);
         }
     }
