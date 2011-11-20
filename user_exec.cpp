@@ -9,6 +9,7 @@
 #include <string.h>
 #include "user_exec.h"
 #include "launch_process.h"
+#include "var.h"
 
 using namespace std;
 
@@ -196,6 +197,40 @@ void fork_exec_pipe(string cmd, bool foreground, bool append, vector<string>::it
     waitpid(src_pid, &res, 0);
     waitpid(dest_pid, &res, 0);
 }
+
+void fork_exec_monitor_resources(string cmd, bool foreground, bool append) {
+
+    int cpu_use_limit;
+    int cpu_time_limit;
+    int mem_use_limit;
+    int mem_time_limit;
+    int time_limit;
+
+    if(monitor) {
+        pid_t monitoring_pid = fork();
+        if(monitoring_pid == 0) {
+            fork_exec_bg(cmd, foreground, append);
+        } else {
+            int sample_cpu_usage;
+            int sample_cpu_over_time;
+            int sample_mem_usage;
+            int proc_time;
+            while(is_running(monitoring_pid)) {
+                sample_fields();
+                if(cpu_time_limit > 0 && sample_exceeded_time_cpu > cpu_time_limit) {
+
+                }
+                if(ram_time_limit> 0 && sample_exceeded_time_ram > ram_time_limit) {
+
+                }
+                if(time_limit > 0 && proc_time > time_limit) {
+
+                }
+            }
+        }
+   }
+}
+
 //johnny one note
 void fork_exec_bg(string cmd, bool foreground, bool append) {
 	int status;
