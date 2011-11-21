@@ -51,16 +51,15 @@ int main()
     while(!fatal_error){
         string inputBuffer;
 
-
-
         cout << "sh142> ";
         getline(cin,inputBuffer);
         if (inputBuffer == "exit")
             return 0;
-
-        find_replace_files(inputBuffer);    //call a function to replace data files as needed
-        find_replace_vars(inputBuffer);   //call a function to replace variables as needed
-        inputBuffer.append(" "); // append space at the end of string; otherwise, last command will not be read
+        if(inputBuffer.find("$?") == string::npos){
+            find_replace_files(inputBuffer);    //call a function to replace data files as needed
+            find_replace_vars(inputBuffer);   //call a function to replace variables as needed
+        }
+            inputBuffer.append(" "); // append space at the end of string; otherwise, last command will not be read
 
         if  (inputBuffer.find("CPUMAX") != string::npos || inputBuffer.find("MEMMAX") != string::npos
             || inputBuffer.find("TIMEMAX") != string::npos)
@@ -83,7 +82,7 @@ int main()
         {
             remote_shell(inputBuffer);
         }
-     /*   else if(inputBuffer.find('=') != string::npos && inputBuffer.find("for") == string::npos) // input is a shell variable
+        else if(inputBuffer.find('=') != string::npos && inputBuffer.find("for") == string::npos) // input is a shell variable
         {
             string var = inputBuffer.substr(0,inputBuffer.find('='));
             string value = inputBuffer.substr(inputBuffer.find('=')+1,inputBuffer.size());
@@ -91,17 +90,18 @@ int main()
             cout << endl << "shell value: " << value << endl;
             set_var(var,value);                                  // ***uncomment ***
 
-        }*/
+        }
         else if(inputBuffer.find("for") != string::npos)    // for(initialization; condition; increase)
             for_loop(inputBuffer);      //iteration for one or more commands using user's predefined parameters
 
         else if (inputBuffer.find("$?") != string::npos)
         {
+            cout << "FLAG" << endl;
             if(commands.size() == 0)
                 cout << "No commands executed" << endl;
             else{
-                //int process_num = atoi((inputBuffer.substr(2,inputBuffer.size())).c_str());
-               // cout << endl << "check exit status of process number " << process_num << endl;
+                int process_num = atoi((inputBuffer.substr(2,inputBuffer.size())).c_str());
+                cout << endl << "check exit status of process number " << process_num << endl;
             }
         }
         else                                    //input is one or more commands
