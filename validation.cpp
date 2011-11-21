@@ -62,8 +62,19 @@ int main()
         find_replace_vars(inputBuffer);   //call a function to replace variables as needed
         inputBuffer.append(" "); // append space at the end of string; otherwise, last command will not be read
 
+        if  (inputBuffer.find("CPUMAX") != string::npos || inputBuffer.find("MEMMAX") != string::npos
+            || inputBuffer.find("TIMEMAX") != string::npos)
+        {
+            string var = inputBuffer.substr(0,inputBuffer.find('='));
+            string value = inputBuffer.substr(inputBuffer.find('=')+1,inputBuffer.size());
+            cout << endl << "shell variable " << var << endl;
+            cout << endl << "shell value: " << value << endl;
+            set_var(var,value);                                  // ***uncomment ***
 
-        if (inputBuffer.find(':') != string::npos && inputBuffer.find('=') != string::npos){
+
+        }
+
+        else if (inputBuffer.find(':') != string::npos && inputBuffer.find('=') != string::npos){
             cout << endl << "Cannot determinate is input is a shell variable or shell remote access.... " << endl;
             cout << "Please try again" << endl;
         }
@@ -72,7 +83,7 @@ int main()
         {
             remote_shell(inputBuffer);
         }
-        else if(inputBuffer.find('=') != string::npos && inputBuffer.find("for") == string::npos) // input is a shell variable
+     /*   else if(inputBuffer.find('=') != string::npos && inputBuffer.find("for") == string::npos) // input is a shell variable
         {
             string var = inputBuffer.substr(0,inputBuffer.find('='));
             string value = inputBuffer.substr(inputBuffer.find('=')+1,inputBuffer.size());
@@ -80,7 +91,7 @@ int main()
             cout << endl << "shell value: " << value << endl;
             set_var(var,value);                                  // ***uncomment ***
 
-        }
+        }*/
         else if(inputBuffer.find("for") != string::npos)    // for(initialization; condition; increase)
             for_loop(inputBuffer);      //iteration for one or more commands using user's predefined parameters
 
