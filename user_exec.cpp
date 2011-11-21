@@ -221,7 +221,7 @@ bool stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
             launch_foreground(index);
             return false;	//make sure we're not stuck in foreground
         } else {
-            fork_exec_monitor_resources(cmd, foreground,append);
+            fork_exec(cmd, foreground,append);
         }
     }
     return foreground;
@@ -238,7 +238,7 @@ void fork_exec_pipe(string cmd, bool foreground, bool append, vector<string>::it
     if(src_pid == 0) {
         close(pipe_fd[0]);
         dup2(pipe_fd[1], 1);
-        fork_exec_monitor_resources(cmd, foreground, append);
+        fork_exec(cmd, foreground, append);
         exit(0);
     }
 
@@ -261,131 +261,65 @@ void fork_exec_pipe(string cmd, bool foreground, bool append, vector<string>::it
     waitpid(dest_pid, &res, 0);
 }
 
-void fork_exec_monitor_resources(string cmd, bool foreground, bool append) {
-    string first;
-    string second;
-    int cpu_usage_limit;
-    int cpu_time_limit;
-    string cpu = get_var("CPUMAX");
-    if(cpu != "") {
-        istringstream iss(cpu);
-        getline(iss, first, ':');
-        getline(iss, second);
-        cpu_usage_limit = atoi(first.c_str());
-        cpu_time_limit = atoi(second.c_str());
-        cerr << cpu << endl;
-    }
+//johnny one note
+void fork_exec(string cmd, bool foreground, bool append) {
+    int status;
+    string state;
 
-    int mem_use_limit;
-    int mem_time_limit;
-    string mem = get_var("MEMMAX");
-    if(mem != "") {
-        istringstream iss(mem);
-        getline(iss, first, ':');
-        getline(iss, second);
-        mem_use_limit = atoi(first.c_str());
-        mem_time_limit = atoi(second.c_str());
-        cerr << mem << endl;
-    }
+    if (stream_file[STREAM_OUT] != "")
+        pipe(out_fd);
+    if (stream_file[STREAM_IN] != "")
+        pipe(in_fd);
+    if (stream_file[ERR_OUT] != "")
+        pipe(err_fd);
 
-    int time_limit;
-    string tim = get_var("TIMEMAX");
-    if(tim != "") {
-        time_limit = atoi(tim.c_str());
-        cerr << tim << endl;
-    }
+    child = fork();
+    if(child == 0) {
+        string first;
+        string second;
+        int cpu_usage_limit;
+        int cpu_time_limit;
+        string cpu = get_var("CPUMAX");
+        if(cpu != "") {
+            istringstream iss(cpu);
+            getline(iss, first, ':');
+            getline(iss, second);
+            cpu_usage_limit = atoi(first.c_str());
+            cpu_time_limit = atoi(second.c_str());
+            //  cerr << cpu << endl;
+        }
 
-    if(cpu != "" || mem != "" || tim != "") {
+        int mem_use_limit;
+        int mem_time_limit;
+        string mem = get_var("MEMMAX");
+        if(mem != "") {
+            istringstream iss(mem);
+            getline(iss, first, ':');
+            getline(iss, second);
+            mem_use_limit = atoi(first.c_str());
+            mem_time_limit = atoi(second.c_str());
+            //cerr << mem << endl;
+        }
+
+        int time_limit;
+        string tim = get_var("TIMEMAX");
+        if(tim != "") {
+            time_limit = atoi(tim.c_str());
+            //cerr << tim << endl;
+        }
+
+        if(!foreground) {
+            pid_t childId;
+            childId = getpid();
+            setpgid(childId,childId); //set child process in it's own group
+        }
+
         pid_t monitoring_pid = fork();
         if(monitoring_pid == 0) {
-            fork_exec(cmd, foreground, append);
-            exit(0);
-        } else {
-            int cpu_usage = 0;
-            int mem_usage = 0;
-            time_t cpu_time_start = 0;
-            time_t mem_time_start = 0;
-            time_t cpu_time_over = 0;
-            time_t mem_time_over = 0;
-            time_t time_diff = 0;
-            time_t time_start = 0;
-
-            cpu_percent_t *cs;
-            mem_stat_t *ms;
-            string to_stat = "/proc/" + monitoring_pid;
-
-            struct stat st;
-            cerr << "STAT" << endl;
-            int res;
-            //while (stat(to_stat.c_str(), &st) == 0) {
-            while (waitpid(monitoring_pid, &res, WNOHANG) == 0) {
-                cs = cpu_percent_usage();
-                cpu_usage = cs->user;
-                if(cpu_usage < cpu_usage_limit) {
-                    cpu_time_over = 0;
-                } else {
-                    if(cpu_time_over == 0) {
-                        cpu_time_start = cs->time_taken;
-                    } else if(cpu_time_over > cpu_time_limit) {
-                        cerr << "DIE FROM CPU LIMIT" << endl;
-                    } else {
-                        cpu_time_over = cs->time_taken - cpu_time_start;
-                    }
-                }
-
-                ms = get_memory_stats();
-                mem_usage = ms->used;
-                if(mem_usage < mem_use_limit) {
-                    mem_time_over = 0;
-                } else {
-                    if(mem_time_over == 0) {
-                        mem_time_start = ms->used;
-                    } else if(mem_time_over > mem_time_limit) {
-                        cerr << "DIE FROM MEM LIMIT" << endl;
-                    } else {
-                        mem_time_over = cs->time_taken - mem_time_start;
-                    }
-                }
-
-                if(time_start == 0) {
-                    time_start = cs->time_taken;
-                } else if(time_diff > time_limit) {
-                    cerr << "DIE FROM TIME LIMIT" << endl;
-                } else {
-                    time_diff = cs->time_taken - time_start;
-                }
-                cerr << "TIME" << time_diff << endl;
-                cerr << "CPU" << cpu_usage << endl;
-                cerr << "MEM" << mem_usage << endl;
-                sleep(1);
-            }
-            //          int res;
-            //        waitpid(monitoring_pid, &res, 0);
-        }
-        } else {
-            fork_exec(cmd, foreground, append);
-        }
-    }
-
-    //johnny one note
-    void fork_exec(string cmd, bool foreground, bool append) {
-        int status;
-        string state;
-
-        if (stream_file[STREAM_OUT] != "")
-            pipe(out_fd);
-        if (stream_file[STREAM_IN] != "")
-            pipe(in_fd);
-        if (stream_file[ERR_OUT] != "")
-            pipe(err_fd);
-
-        child = fork();
-        if(child == 0) {
             char *input = (char*)cmd.c_str();
             char *cmdArg[100];
             char *token = strtok(input, " \n");
             int i = 0;
-            pid_t childId;
             cmdArg[i] = token;
 
             /* Set the handling for job control signals back to the default.
@@ -395,11 +329,6 @@ void fork_exec_monitor_resources(string cmd, bool foreground, bool append) {
                signal (SIGTTIN, SIG_DFL);
                signal (SIGTTOU, SIG_DFL);
                signal (SIGCHLD, SIG_DFL); */
-
-            if(!foreground) {
-                childId = getpid();
-                setpgid(childId,childId); //set child process in it's own group
-            }
 
             //while this is not the last token
             while(token != NULL) {
@@ -423,121 +352,183 @@ void fork_exec_monitor_resources(string cmd, bool foreground, bool append) {
             execvp(cmdArg[0], cmdArg);
             exit(1); //will exit if it's an invalid command
         } else {
-            int res;
-            pid_t out_pid;
-            pid_t in_pid;
-            pid_t err_pid;
+            if(cpu != "" || mem != "" || tim != "") {
+                int cpu_usage = 0;
+                int mem_usage = 0;
+                time_t cpu_time_start = 0;
+                time_t mem_time_start = 0;
+                time_t cpu_time_over = 0;
+                time_t mem_time_over = 0;
+                time_t time_diff = 0;
+                time_t time_start = 0;
 
-            if (stream_file[STREAM_OUT] != "") {
-                close(out_fd[1]);
-                out_pid = fork_out_proc(append);
-                close(out_fd[0]);
-            }
-            if (stream_file[STREAM_IN] != "") {
-                close(in_fd[0]);
-                in_pid = fork_in_proc();
-                close(in_fd[1]);
-            }
-            if (stream_file[ERR_OUT] != "") {
-                close(err_fd[1]);
-                err_pid = fork_err_proc(append);
-                close(err_fd[0]);
-            }
+                cpu_percent_t *cs;
+                mem_stat_t *ms;
+                string to_stat = "/proc/" + monitoring_pid;
 
-            if (stream_file[STREAM_OUT] != "") {
-                waitpid(out_pid, &res, 0);
-            }
-            if (stream_file[STREAM_IN] != "") {
-                waitpid(in_pid, &res, 0);
-            }
-            if (stream_file[ERR_OUT] != "") {
-                waitpid(err_pid, &res, 0);
-            }
+                struct stat st;
+                int res;
+                while (waitpid(monitoring_pid, &res, WNOHANG) == 0) {
+                    cs = cpu_percent_usage();
+                    cpu_usage = cs->user;
+                    if(cpu_usage < cpu_usage_limit) {
+                        cpu_time_over = 0;
+                    } else {
+                        if(cpu_time_over == 0) {
+                            cpu_time_start = cs->time_taken;
+                        } else if(cpu_time_over > cpu_time_limit) {
+                            cerr << "DIE FROM CPU LIMIT" << endl;
+                        } else {
+                            cpu_time_over = cs->time_taken - cpu_time_start;
+                        }
+                    }
 
-            if(!foreground) {
-                setpgid(child,child);
-                bg_process.push_back(child);
-                bg_cmd_process.push_back(cmd.c_str());
-                bg_dataV.push_back(temp);	//no compound cmd default
-                bg_dataV.back().compound = false;
-                printf("[%d] %d %s\n", (int)bg_process.size(), (int)child, cmd.c_str());
-                /*exit_pid = waitpid(child, &status, WUNTRACED | WCONTINUED);
-                  bg_status.push_back(status);
-                  state = get_state(status);
-                  cout<< exit_pid << " " << status << " " << state << " " << endl;
-                  */} else {
-                      //            waitpid(child, &last_res, 0);
-                      // 		exit_pid = waitpid(child, &last_res, 0); //blocking wait for fg
-                      //		cout<< exit_pid << "<-id  " << last_res << "<-status " << endl;
-                  }
-                  //	exit_pid = waitpid(WAIT_ANY, &status, WNOHANG);
-        }
-    }
+                    ms = get_memory_stats();
+                    mem_usage = ms->used;
+                    if(mem_usage < mem_use_limit) {
+                        mem_time_over = 0;
+                    } else {
+                        if(mem_time_over == 0) {
+                            mem_time_start = ms->used;
+                        } else if(mem_time_over > mem_time_limit) {
+                            cerr << "DIE FROM MEM LIMIT" << endl;
+                        } else {
+                            mem_time_over = cs->time_taken - mem_time_start;
+                        }
+                    }
 
-    pid_t fork_out_proc(bool append) {
-        pid_t out_pid;
-        if((out_pid = fork()) == 0) {
-            long lSize = 10000;
-            char * buffer;
-            buffer = new char[lSize];
-            close(out_fd[1]);
-            int len = read(out_fd[0], buffer, lSize);
-            string out(buffer);
-
-            ofstream fout(stream_file[STREAM_OUT].c_str(), append ? ios_base::app : ios_base::trunc);
-            fout << out;
-            close(out_fd[0]);
-            fout.close();
-            delete [] buffer;
-            exit(0);
-        } else {
-            return out_pid;
-        }
-    }
-
-    pid_t fork_in_proc() {
-        string line;
-        pid_t in_pid;
-        if((in_pid = fork()) == 0) {
-            close(in_fd[0]);
-            ifstream file(stream_file[STREAM_IN].c_str(), ios_base::in);
-            if (file.bad()) {
-                cerr << "File read error\n";
-                return 1;
-            }
-
-            while(file.good()) {
-                getline(file, line);
-                if(file.good()) {
-                    write(in_fd[1], line.c_str(), line.length());
+                    if(time_start == 0) {
+                        time_start = cs->time_taken;
+                    } else if(time_diff > time_limit) {
+                        cerr << "DIE FROM TIME LIMIT" << endl;
+                    } else {
+                        time_diff = cs->time_taken - time_start;
+                    }
+                    cerr << "TIME" << time_diff << endl;
+                    cerr << "CPU" << cpu_usage << endl;
+                    cerr << "MEM" << mem_usage << endl;
+                    sleep(1);
                 }
+                exit(0);
             }
-            file.close();
-            close(in_fd[1]);
-            exit(0);
-        } else {
-            return in_pid;
         }
-    }
-
-    pid_t fork_err_proc(bool append) {
+    } else {
+        int res;
+        pid_t out_pid;
+        pid_t in_pid;
         pid_t err_pid;
-        if((err_pid = fork()) == 0) {
-            long lSize = 10000;
-            char * buffer;
-            buffer = new char[lSize];
-            close(err_fd[1]);
-            int len = read(err_fd[0], buffer, lSize);
-            string out(buffer);
 
-            ofstream fout(stream_file[ERR_OUT].c_str(), append ? ios_base::app : ios_base::trunc);
-            fout << out;
-
-            fout.close();
-            close(err_fd[0]);
-            delete [] buffer;
-            exit(0);
-        } else {
-            return err_pid;
+        if (stream_file[STREAM_OUT] != "") {
+            close(out_fd[1]);
+            out_pid = fork_out_proc(append);
+            close(out_fd[0]);
         }
+        if (stream_file[STREAM_IN] != "") {
+            close(in_fd[0]);
+            in_pid = fork_in_proc();
+            close(in_fd[1]);
+        }
+        if (stream_file[ERR_OUT] != "") {
+            close(err_fd[1]);
+            err_pid = fork_err_proc(append);
+            close(err_fd[0]);
+        }
+
+        if (stream_file[STREAM_OUT] != "") {
+            waitpid(out_pid, &res, 0);
+        }
+        if (stream_file[STREAM_IN] != "") {
+            waitpid(in_pid, &res, 0);
+        }
+        if (stream_file[ERR_OUT] != "") {
+            waitpid(err_pid, &res, 0);
+        }
+
+        if(!foreground) {
+            setpgid(child,child);
+            bg_process.push_back(child);
+            bg_cmd_process.push_back(cmd.c_str());
+            bg_dataV.push_back(temp);	//no compound cmd default
+            bg_dataV.back().compound = false;
+            printf("[%d] %d %s\n", (int)bg_process.size(), (int)child, cmd.c_str());
+            /*exit_pid = waitpid(child, &status, WUNTRACED | WCONTINUED);
+              bg_status.push_back(status);
+              state = get_state(status);
+              cout<< exit_pid << " " << status << " " << state << " " << endl;
+              */
+        } else {
+            //            waitpid(child, &last_res, 0);
+            // 		exit_pid = waitpid(child, &last_res, 0); //blocking wait for fg
+            //		cout<< exit_pid << "<-id  " << last_res << "<-status " << endl;
+        }
+        //	exit_pid = waitpid(WAIT_ANY, &status, WNOHANG);
     }
+}
+
+pid_t fork_out_proc(bool append) {
+    pid_t out_pid;
+    if((out_pid = fork()) == 0) {
+        long lSize = 10000;
+        char * buffer;
+        buffer = new char[lSize];
+        close(out_fd[1]);
+        int len = read(out_fd[0], buffer, lSize);
+        string out(buffer);
+
+        ofstream fout(stream_file[STREAM_OUT].c_str(), append ? ios_base::app : ios_base::trunc);
+        fout << out;
+        close(out_fd[0]);
+        fout.close();
+        delete [] buffer;
+        exit(0);
+    } else {
+        return out_pid;
+    }
+}
+
+pid_t fork_in_proc() {
+    string line;
+    pid_t in_pid;
+    if((in_pid = fork()) == 0) {
+        close(in_fd[0]);
+        ifstream file(stream_file[STREAM_IN].c_str(), ios_base::in);
+        if (file.bad()) {
+            cerr << "File read error\n";
+            return 1;
+        }
+
+        while(file.good()) {
+            getline(file, line);
+            if(file.good()) {
+                write(in_fd[1], line.c_str(), line.length());
+            }
+        }
+        file.close();
+        close(in_fd[1]);
+        exit(0);
+    } else {
+        return in_pid;
+    }
+}
+
+pid_t fork_err_proc(bool append) {
+    pid_t err_pid;
+    if((err_pid = fork()) == 0) {
+        long lSize = 10000;
+        char * buffer;
+        buffer = new char[lSize];
+        close(err_fd[1]);
+        int len = read(err_fd[0], buffer, lSize);
+        string out(buffer);
+
+        ofstream fout(stream_file[ERR_OUT].c_str(), append ? ios_base::app : ios_base::trunc);
+        fout << out;
+
+        fout.close();
+        close(err_fd[0]);
+        delete [] buffer;
+        exit(0);
+    } else {
+        return err_pid;
+    }
+}

@@ -35,15 +35,13 @@ extern bool G_BG_FLAG;
 
 void init_shell(); //initialized the shell with the correct handling
 
-void launch_process(std::string cmd); //launch a group of process
-
 void launch_foreground(int); //bring process to the foreground
 
-void display_jobs();	//display all the background process 
+void display_jobs();	//display all the background process
 
-void check_bg_status();	//check bg process and remove/update process bg	
+void check_bg_status();	//check bg process and remove/update process bg
 
-string get_state(int);	//takes status and returns the state of the status 
+string get_state(int);	//takes status and returns the state of the status
 
 void store_history(vector<string>);
 
