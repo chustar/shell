@@ -7,6 +7,8 @@
 #include <sys/wait.h>
 #include <vector>
 #include "launch_process.h"
+#include "var.h"
+
 using namespace std;
 
 pid_t shell_pgid;
@@ -28,6 +30,7 @@ bool G_BG_FLAG = false;	//global background flag assumption: if there's one & th
 
 void init_shell() {
 
+    load_vars();    //laod shell variables from file
        /* see if we are running interactively. */
         shell_terminal = STDIN_FILENO;
         shell_is_interactive = isatty(shell_terminal);
@@ -80,8 +83,8 @@ void launch_process(std::string cmd, bool foreground) {
                 	cmdArg[++i] = token;
         	}
         	cmdArg[++i] = NULL;
-  
-		setpgid(process,process); //set child process in it's own group       
+
+		setpgid(process,process); //set child process in it's own group
 		/* Set the handling for job control signals back to the default.  */
 		signal (SIGINT, SIG_DFL);
 		signal (SIGQUIT, SIG_DFL);
@@ -95,7 +98,7 @@ void launch_process(std::string cmd, bool foreground) {
         } else if( process < 0) {
                 perror("fork error");
         } else {
-                setpgid(process,process); //set child process in it's own group 
+                setpgid(process,process); //set child process in it's own group
                 waitpid(process, &status, WNOHANG);
         }
 
@@ -106,10 +109,10 @@ void launch_foreground(int index) {
 	string cmd;
 	bool c = false;
 	vector<string> cmdV;
-	vector<char> tV;	
+	vector<char> tV;
 	int status;
 	pid_t proc;
-                                
+
      	signal(SIGINT, SIG_IGN);
         signal(SIGQUIT, SIG_IGN);
         signal(SIGTSTP, SIG_IGN);
@@ -128,13 +131,13 @@ void launch_foreground(int index) {
                 	if (kill (- proc, SIGCONT) < 0)
                         	perror ("kill (SIGCONT)");
                 	waitpid(proc, &status, 0);
-                	cout << "[" << bg_process.size() << "] " <<  bg_process.back() << " " << bg_cmd_process.back() << endl; 	
+                	cout << "[" << bg_process.size() << "] " <<  bg_process.back() << " " << bg_cmd_process.back() << endl;
 			bg_process.pop_back();	//pop the id
 			bg_cmd_process.pop_back(); //pop the cmd
-                 
+
 			/* Put the shell back in the foreground.  */
             tcsetpgrp (STDIN_FILENO, shell_pgid);
-			
+
 
 	signal (SIGINT, SIG_DFL);
 	signal (SIGQUIT, SIG_DFL);
@@ -146,18 +149,18 @@ void launch_foreground(int index) {
 				cmdV.push_back((bg_dataV.back().cmd[i]));
 				tV.push_back((bg_dataV.back().type[i]));
 			}
-			c = bg_dataV.back().compound; 
+			c = bg_dataV.back().compound;
 			bg_dataV.pop_back();
-			//check to see if we need a compound action	
-			if(c) { 
+			//check to see if we need a compound action
+			if(c) {
 				G_BG_FLAG = true;
-				user_exec(cmdV,tV );	
-        	}	
+				user_exec(cmdV,tV );
+        	}
 		} else { //indexing into background process
 			//check if index is out of range
 			if(index < 0 || index > (int)bg_process.size())
 				return;
-			
+
 			proc = bg_process[index-1];
 			cmd = bg_cmd_process[index-1];
 			tcsetpgrp(STDIN_FILENO, proc);
@@ -166,11 +169,11 @@ void launch_foreground(int index) {
                 	waitpid(proc, &status, 0);
                 	bg_process.erase(bg_process.begin()+(index-1));
 			bg_cmd_process.erase(bg_cmd_process.begin()+(index-1)); //removed hte cmd vector as well
-                 
+
 			bg_dataV.erase(bg_dataV.begin()+(index-1)); // dataV
 			/* Put the shell back in the foreground.  */
                 	tcsetpgrp (STDIN_FILENO, shell_pgid);
-			
+
 		}
 	}
 
@@ -197,7 +200,7 @@ void display_jobs() {
 			for(int j = 0; j < bg_dataV[i].cmd.size(); j++) {
 				cout<< "cmd: " << bg_dataV[i].cmd[j] << " type: " << bg_dataV[i].type[j] << endl;
 			}
-		
+
 		}
 	}
 
@@ -208,8 +211,8 @@ void check_bg_status() {
 	string state;
 	for(int i = 0; i < bg_process.size(); i++) {
 	        exit_pid = waitpid(bg_process[i], &status, WUNTRACED | WCONTINUED | WNOHANG);
-               	//if less then zero, process error meaning it doesn't exist 
-		//so kill process 
+               	//if less then zero, process error meaning it doesn't exist
+		//so kill process
 		if(exit_pid < 0 ) {
 			state = get_state(status); //print exit status when we remove process
 			//cout<<"["<< (i+1) << "] " << state << " " << bg_process[i] << " "<< bg_cmd_process[i] << endl;
@@ -217,7 +220,7 @@ void check_bg_status() {
                 	bg_cmd_process.erase(bg_cmd_process.begin()+i);
                 	bg_status.erase(bg_status.begin()+i);
 		} else if (exit_pid > 0) { //process changed state so updated
-			bg_status[i] = status;	
+			bg_status[i] = status;
 			state = get_state(status);
 			//cout<<"["<< (i+1) << "] " << state << " " << bg_process[i] << " " << bg_cmd_process[i] << endl;
 		} else { //process did not change state
@@ -229,25 +232,25 @@ void check_bg_status() {
 
 string get_state(int status) {
 
-                if( WIFEXITED(status) ) { 
+                if( WIFEXITED(status) ) {
                 	return "T";
-		}   
-                if (WIFSIGNALED(status) ) { 
+		}
+                if (WIFSIGNALED(status) ) {
                 	return "T+";
-		}   
+		}
                 if (WIFSTOPPED(status)) {
                 	return "S";
-		}   
-                if (WIFCONTINUED(status) ) { 
+		}
+                if (WIFCONTINUED(status) ) {
                 	return "C";
-		}   
+		}
 
 }
 
 void store_history(vector<string> cmd) {
 	string c;
 	vector<string>::iterator cmdIter;
-	
+
 	for(cmdIter = cmd.begin(); cmdIter < cmd.end(); ++cmdIter) {
 		c += *cmdIter;
 		c += " ";

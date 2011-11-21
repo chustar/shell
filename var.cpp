@@ -108,7 +108,7 @@ int find_replace_vars(string &cmd) {
 string get_var(string name) {
 	char *res = getenv(name.c_str());
 	if(res != NULL) return string(res);
-	else cerr << name << "Failed" << endl;
+	else return "";
 }
 
 int set_var(string name, string value) {
