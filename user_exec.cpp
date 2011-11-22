@@ -1,9 +1,11 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <sstream>
 #include <string.h>
 #include <sys/wait.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +18,7 @@ using namespace std;
 pid_t child = 0;
 int last_res = 0;
 bool neg = false;
+bool neg2 = false;
 int out_fd[2];
 int in_fd[2];
 int err_fd[2];
@@ -34,6 +37,8 @@ int user_exec(vector<string> cmd, vector<char> types) {
     string state;
     G_BG_FLAG = false; //set global flag to false
 
+    neg2 = false; //reset the neg flag
+
     vector<string>::iterator myIter;
     for(myIter = cmd.begin(); myIter < cmd.end(); ++myIter) {
         if(*myIter == "&") //see if this is a background process
@@ -41,9 +46,14 @@ int user_exec(vector<string> cmd, vector<char> types) {
     }
 
     check_bg_status();
-    store_history(cmd);
+    if(cmd[0] != "")
+        store_history(cmd);
     if(cmd.size() != 0 && cmd[0] != "") {
         for(cmdIter = cmd.begin(), typeIter = types.begin(); cmdIter < cmd.end(); ++cmdIter, ++typeIter) {
+            if((*cmdIter).substr(0, 1) == "!") {
+                (*cmdIter) = (*cmdIter).substr(1,(*cmdIter).size());
+                neg2 = true;
+            }
             if(*typeIter == 'T') {
                 token_exec(cmdIter, typeIter, cmd, fg);
             } else if(*typeIter == 'C') {
@@ -52,17 +62,22 @@ int user_exec(vector<string> cmd, vector<char> types) {
                 stream_file[2] = "";
                 fg = stream_exec(cmdIter, cmd);
             }
+
         }
         if(fg) {
             exit_pid = waitpid(child, &last_res, 0); //blocking wait for fg
+            exit_pid = waitpid(child, &last_res, 0); //blocking wait for fg
+            if(cmd[0] != "")
+                store_status_cmd(last_res); //store status of command
         } else {
             exit_pid = waitpid(child, &last_res, WUNTRACED | WCONTINUED | WNOHANG);
             bg_status.push_back(last_res);
             state = get_state(last_res);
-            cout<< exit_pid << " " << last_res << " " << state << " " << endl;
+            store_status_cmd(last_res);
             //take care of condition when we access waitpid twice
             while(bg_status.size() > bg_process.size()) {
                 bg_status.pop_back();
+                //history_status.pop_back();//adjust
             }
         }
 
@@ -78,6 +93,13 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
     } else if(*cmdIter == "&&") {                       //handle AND condition
         cmdIter++;                                      //look ahead to the next command
         typeIter++;                                     //look ahead to the next typeIter
+
+
+        if((*cmdIter).substr(0, 1) == "!") {
+            (*cmdIter) = (*cmdIter).substr(1,(*cmdIter).size());
+            neg2 = true;
+        }
+
         if(fg) {
             waitpid(child, &res, 0);                        //check the status of the last run command
         } else {
@@ -92,14 +114,14 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
             else if (res == 0) res = 1;
             neg = false;
         }
-        if (res == 0) {                                 //if the last guy worked, execute it and leave it in the background
+        if ((res == 0 && !neg2) || (res == 256 && neg2)) {                                 //if the last guy worked, execute it and leave it in the background
             if (*cmdIter == "!") {                      //handle a not condition before the next line
                 cmdIter++;
                 typeIter++;
                 neg = true;
             }
             stream_exec(cmdIter, cmdV);
-        } else if( res != 256 && res > 0 ) {
+        } else if( res != 256 && res > 0 && !neg2) {
             //256 is the retrun number for exit(1) from ubuntu
             //we need to pause the rest of executioni
             string scmd;
@@ -122,12 +144,20 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
                 cmdIter++;
                 typeIter++;
             }
-            cmdIter++;
-            typeIter++;
+            while(cmdIter < cmdV.end()) {
+                cmdIter++;
+                typeIter++;
+            }
         }
     } else if(*cmdIter == "||"){
         cmdIter++;
         typeIter++;
+
+        if((*cmdIter).substr(0, 1) == "!") {
+            (*cmdIter) = (*cmdIter).substr(1,(*cmdIter).size());
+            neg2 = true;
+        }
+
         if(fg) {
             exit_pid = waitpid(child, &res, 0);
         } else {
@@ -140,7 +170,7 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
             if (res > 0) res = 0;
             else if (res == 0) res = 1;
         } //256 is the number returned on the ubuntu machine with exit(1)
-        if (res != 0 & res == 256) { //if command is invalid run second command which we set with exit
+        if (res != 0 && res == 256 && !neg2) { //if command is invalid run second command which we set with exit
             if (*cmdIter == "!") {
                 cmdIter++;
                 typeIter++;
@@ -157,6 +187,7 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
         }
         neg = false;
     }
+    neg2 = false; //reset the neg2 flag
 }
 
 bool stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
@@ -168,7 +199,6 @@ bool stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
     bool wake_bg = false;
     int status;
     while (cmdIter < vec.end() && *cmdIter != "&&" && *cmdIter != "||" && *cmdIter != "|") {
-        cout << *cmdIter << endl;
         if(*cmdIter == "<") {
             cmdIter++;
             stream_file[STREAM_IN] = *cmdIter;
@@ -191,6 +221,7 @@ bool stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
         foreground = false;
     } else if(*cmdIter == "fg") {
         wake_bg = true;
+        store_status_cmd(0);
     } else if((*cmdIter).compare(0,1,"%") == 0) {
         //	printf("woot: %s\n",(cmdIter));
         pos = *cmdIter;
@@ -201,8 +232,10 @@ bool stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
         wake_bg = true;
     } else if(*cmdIter == "jobs") {
         display_jobs();
+        store_status_cmd(0);//make jobs command valid
         return false; //only display background jobs
     } else if (*cmdIter == "history") {
+        store_status_cmd(0);//make history command valid
         display_history();
         return false; //do not wait on these commands
     }
@@ -215,6 +248,7 @@ bool stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
         cmdIter--;
 
         if(wake_bg) { //if it's moving a bg process to fg
+
             launch_foreground(index);
             return false;	//make sure we're not stuck in foreground
         } else {
@@ -235,6 +269,7 @@ void fork_exec_pipe(string cmd, bool foreground, bool append, vector<string>::it
     if(src_pid == 0) {
         close(pipe_fd[0]);
         dup2(pipe_fd[1], 1);
+        close(pipe_fd[1]);
         fork_exec_bg(cmd, foreground, append);
         exit(0);
     }
@@ -243,6 +278,7 @@ void fork_exec_pipe(string cmd, bool foreground, bool append, vector<string>::it
     if(dest_pid == 0) {
         close(pipe_fd[1]);
         dup2(pipe_fd[0], 0);
+        close(pipe_fd[0]);
         stream_exec(cmdIter, vec);
         exit(0);
     }
@@ -300,20 +336,37 @@ void fork_exec_bg(string cmd, bool foreground, bool append) {
         cmdArg[++i] = NULL;
 
         if (stream_file[STREAM_OUT] != "") {
-            cout << "OPEN OUT" << endl;
             close(out_fd[0]);
             dup2(out_fd[1], 1);
+            close(out_fd[1]);
         }
         if (stream_file[STREAM_IN] != "") {
-            cout << "OPEN IN" << endl;
             close(in_fd[1]);
             dup2(in_fd[0], 0);
+            close(in_fd[0]);
         }
         if (stream_file[ERR_OUT] != "") {
             close(err_fd[0]);
             dup2(err_fd[1], 2);
+            close(err_fd[1]);
         }
-        execvp(cmdArg[0], cmdArg);
+
+        string dir;
+        string path = get_var("PATH");
+        istringstream search(path);
+        while(search.good()) {
+            getline(search, dir, ':');
+            if(dir != "") {
+                struct stat st;
+                if(dir[dir.length()] != '/') dir.append("/");
+                string file = dir + cmdArg[0];
+                //is file in dir?
+                if(stat(file.c_str(), &st) == 0) {
+                    execvp(file.c_str(), cmdArg);
+                }
+            }
+        }
+
         exit(1); //will exit if it's an invalid command
     } else {
         int res;
@@ -337,11 +390,11 @@ void fork_exec_bg(string cmd, bool foreground, bool append) {
             close(err_fd[0]);
         }
 
-        if (stream_file[STREAM_IN] != "") {
-            waitpid(in_pid, &res, 0);
-        }
         if (stream_file[STREAM_OUT] != "") {
             waitpid(out_pid, &res, 0);
+        }
+        if (stream_file[STREAM_IN] != "") {
+            waitpid(in_pid, &res, 0);
         }
         if (stream_file[ERR_OUT] != "") {
             waitpid(err_pid, &res, 0);
@@ -358,11 +411,10 @@ void fork_exec_bg(string cmd, bool foreground, bool append) {
               bg_status.push_back(status);
               state = get_state(status);
               cout<< exit_pid << " " << status << " " << state << " " << endl;
-              */
-        } else {
-                   		exit_pid = waitpid(child, &last_res, 0); //blocking wait for fg
+              */} else {
+                  // 		exit_pid = waitpid(child, &last_res, 0); //blocking wait for fg
                   //		cout<< exit_pid << "<-id  " << last_res << "<-status " << endl;
-        }
+              }
               //	exit_pid = waitpid(WAIT_ANY, &status, WNOHANG);
     }
 }
@@ -374,15 +426,17 @@ pid_t fork_out_proc(bool append) {
         char * buffer;
         buffer = new char[lSize];
         close(out_fd[1]);
+            cout << "PIPE OUTIN" << endl;
         int len = read(out_fd[0], buffer, lSize);
+            cout << "PIPE OUTIN" << endl;
         string out(buffer);
 
         ofstream fout(stream_file[STREAM_OUT].c_str(), append ? ios_base::app : ios_base::trunc);
+            cout << "PIPE OUTIN" << endl;
         fout << out;
         close(out_fd[0]);
         fout.close();
         delete [] buffer;
-        cout << "EXITING OUT" << endl;
         exit(0);
     } else {
         return out_pid;
@@ -406,10 +460,12 @@ pid_t fork_in_proc() {
                 write(in_fd[1], line.c_str(), line.length());
             }
         }
+        int end = 3;
+        write(in_fd[1], &end, sizeof(end));
         file.close();
         close(in_fd[1]);
-        cout << "EXITING IN" << endl;
-        exit(0);
+        cout << "PIPE IN" << endl;
+        exit(1);
     } else {
         return in_pid;
     }

@@ -45,5 +45,10 @@ string get_state(int);	//takes status and returns the state of the status
 
 void store_history(vector<string>);
 
+void store_status_cmd(int);
+
 void display_history();
+
+void display_exit_status(int);
+
 #endif

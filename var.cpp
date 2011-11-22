@@ -32,7 +32,6 @@ int load_vars() {
 }
 
 int find_replace_files(string &cmd) {
-    return 0;
     string start;
 	string middle;
 	string end;
