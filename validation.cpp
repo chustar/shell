@@ -96,7 +96,6 @@ int main()
 
         else if (inputBuffer.find("$?") != string::npos)
         {
-            cout << "FLAG" << endl;
             if(commands.size() == 0)
                 cout << "No commands executed" << endl;
             else{
