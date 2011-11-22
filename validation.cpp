@@ -100,7 +100,7 @@ int main()
                 cout << "No commands executed" << endl;
             else{
               */  int process_num = atoi((inputBuffer.substr(2,inputBuffer.size())).c_str());
-                cout << endl << "check exit status of process number " << process_num << endl;
+                //cout << endl << "check exit status of process number " << process_num << endl;
             	display_exit_status(process_num);
 		//}
 		

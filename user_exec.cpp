@@ -49,7 +49,6 @@ int user_exec(vector<string> cmd, vector<char> types) {
 	if(cmd.size() != 0 && cmd[0] != "") {
         for(cmdIter = cmd.begin(), typeIter = types.begin(); cmdIter < cmd.end(); ++cmdIter, ++typeIter) {
             if((*cmdIter).substr(0, 1) == "!") {
-				cout<<"Super fly!"<<endl;
 				(*cmdIter) = (*cmdIter).substr(1,(*cmdIter).size());
 				neg2 = true;
 			}
@@ -65,6 +64,7 @@ int user_exec(vector<string> cmd, vector<char> types) {
 	}
     	if(fg) {
 			exit_pid = waitpid(child, &last_res, 0); //blocking wait for fg
+			exit_pid = waitpid(child, &last_res, 0); //blocking wait for fg
 			if(cmd[0] != "") 
 				store_status_cmd(last_res); //store status of command
 	} else {
@@ -72,7 +72,6 @@ int user_exec(vector<string> cmd, vector<char> types) {
 			bg_status.push_back(last_res);
 			state = get_state(last_res);
 			store_status_cmd(last_res);
-			cout<< exit_pid << " " << last_res << " " << state << " " << endl;
 			//take care of condition when we access waitpid twice
 			while(bg_status.size() > bg_process.size()) {
 				bg_status.pop_back();
@@ -95,7 +94,6 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
         
 
 		if((*cmdIter).substr(0, 1) == "!") {
-			cout<<"Super fly #2!"<<endl;
 			(*cmdIter) = (*cmdIter).substr(1,(*cmdIter).size());
 			neg2 = true;
 		}
@@ -154,7 +152,6 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 		typeIter++;
         
 		if((*cmdIter).substr(0, 1) == "!") {
-			cout<<"Super fly #2!"<<endl;
 			(*cmdIter) = (*cmdIter).substr(1,(*cmdIter).size());
 			neg2 = true;
 		}

@@ -1,1 +1,3 @@
+DATA=/bin:/home/minhnguyen
+x=./shell.cpp
 CPUMAX=99:10
