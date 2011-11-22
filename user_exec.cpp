@@ -16,6 +16,7 @@ using namespace std;
 pid_t child = 0;
 int last_res = 0;
 bool neg = false;
+bool neg2 = false;
 int out_fd[2];
 int in_fd[2];
 int err_fd[2];
@@ -34,6 +35,8 @@ int user_exec(vector<string> cmd, vector<char> types) {
 	string state;
 	G_BG_FLAG = false; //set global flag to false
 
+	neg2 = false; //reset the neg flag
+
 	vector<string>::iterator myIter;
 	for(myIter = cmd.begin(); myIter < cmd.end(); ++myIter) {
 		if(*myIter == "&") //see if this is a background process
@@ -45,7 +48,12 @@ int user_exec(vector<string> cmd, vector<char> types) {
 		store_history(cmd);
 	if(cmd.size() != 0 && cmd[0] != "") {
         for(cmdIter = cmd.begin(), typeIter = types.begin(); cmdIter < cmd.end(); ++cmdIter, ++typeIter) {
-            if(*typeIter == 'T') {
+            if((*cmdIter).substr(0, 1) == "!") {
+				cout<<"Super fly!"<<endl;
+				(*cmdIter) = (*cmdIter).substr(1,(*cmdIter).size());
+				neg2 = true;
+			}
+			if(*typeIter == 'T') {
                 token_exec(cmdIter, typeIter, cmd, fg);
             } else if(*typeIter == 'C') {
                 stream_file[0] = "";
@@ -53,6 +61,7 @@ int user_exec(vector<string> cmd, vector<char> types) {
                 stream_file[2] = "";
                 fg = stream_exec(cmdIter, cmd);
             }
+
 	}
     	if(fg) {
 			exit_pid = waitpid(child, &last_res, 0); //blocking wait for fg
@@ -63,7 +72,7 @@ int user_exec(vector<string> cmd, vector<char> types) {
 			bg_status.push_back(last_res);
 			state = get_state(last_res);
 			store_status_cmd(last_res);
-	//		cout<< exit_pid << " " << last_res << " " << state << " " << endl;
+			cout<< exit_pid << " " << last_res << " " << state << " " << endl;
 			//take care of condition when we access waitpid twice
 			while(bg_status.size() > bg_process.size()) {
 				bg_status.pop_back();
@@ -83,6 +92,14 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 	} else if(*cmdIter == "&&") {                       //handle AND condition
         cmdIter++;                                      //look ahead to the next command
 		typeIter++;                                     //look ahead to the next typeIter
+        
+
+		if((*cmdIter).substr(0, 1) == "!") {
+			cout<<"Super fly #2!"<<endl;
+			(*cmdIter) = (*cmdIter).substr(1,(*cmdIter).size());
+			neg2 = true;
+		}
+	
 		if(fg) {
         	waitpid(child, &res, 0);                        //check the status of the last run command
 		} else {
@@ -97,14 +114,14 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 			else if (res == 0) res = 1;
             neg = false;
 		}
-		if (res == 0) {                                 //if the last guy worked, execute it and leave it in the background
+		if ((res == 0 && !neg2) || (res == 256 && neg2)) {                                 //if the last guy worked, execute it and leave it in the background
 			if (*cmdIter == "!") {                      //handle a not condition before the next line
 				cmdIter++;
 				typeIter++;
                 neg = true;
             }
             stream_exec(cmdIter, cmdV);
-		} else if( res != 256 && res > 0 ) {
+		} else if( res != 256 && res > 0 && !neg2) {
 		//256 is the retrun number for exit(1) from ubuntu
 		//we need to pause the rest of executioni
 			string scmd;
@@ -127,13 +144,22 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 				cmdIter++;
 				typeIter++;
 			}
+			while(cmdIter < cmdV.end()) {
 			cmdIter++;
 			typeIter++;
+			}
 		}
 	} else if(*cmdIter == "||"){
 		cmdIter++;
 		typeIter++;
-        if(fg) {
+        
+		if((*cmdIter).substr(0, 1) == "!") {
+			cout<<"Super fly #2!"<<endl;
+			(*cmdIter) = (*cmdIter).substr(1,(*cmdIter).size());
+			neg2 = true;
+		}
+
+		if(fg) {
 			exit_pid = waitpid(child, &res, 0);
 		} else {
 			exit_pid = waitpid(child, &res, WUNTRACED);
@@ -145,7 +171,7 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 			if (res > 0) res = 0;
 			else if (res == 0) res = 1;
 		} //256 is the number returned on the ubuntu machine with exit(1)
-		if (res != 0 & res == 256) { //if command is invalid run second command which we set with exit
+		if (res != 0 && res == 256 && !neg2) { //if command is invalid run second command which we set with exit
 			if (*cmdIter == "!") {
 				cmdIter++;
 				typeIter++;
@@ -162,6 +188,7 @@ bool token_exec(vector<string>::iterator &cmdIter, vector<char>::iterator &typeI
 		}
 		neg = false;
 	}
+	neg2 = false; //reset the neg2 flag
 }
 
 bool stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
