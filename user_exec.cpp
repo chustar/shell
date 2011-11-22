@@ -2,6 +2,7 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <algorithm>
 #include <string.h>
 #include <sys/wait.h>
 #include <sys/time.h>
@@ -358,11 +359,20 @@ void fork_exec_bg(string cmd, bool foreground, bool append) {
             getline(search, dir, ':');
             if(dir != "") {
                 struct stat st;
-                if(dir[dir.length()] != '/') dir.append("/");
-                string file = dir + cmdArg[0];
+                //if(dir[dir.length()] != '/') i
+                //    dir.append("/");
+                size_t found;
+                string file = dir + "/" + cmdArg[0];
+                found = file.find(' ');
+                if (found != string::npos)
+                    file.erase(found, 1);
+
+                //remove(file.begin(), file.end(), ' ');
+               // cout << file << endl;
                 //is file in dir?
                 if(stat(file.c_str(), &st) == 0) {
                     execvp(file.c_str(), cmdArg);
+                    exit(1);
                 }
             }
         }

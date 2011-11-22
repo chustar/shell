@@ -205,7 +205,7 @@ void parser(string inputBuffer)
         }
         if (!grammar_error){
 
-              //validCommand(commands,type);
+            //  validCommand(commands,type);
             user_exec(commands,type);          // send vector command to user_exec.cpp   ***uncomment ***
 
         }
