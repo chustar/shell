@@ -236,5 +236,5 @@ void display_history() {
 
 void display_exit_status(int pos) {
 	if(pos <= history.size())
-		cout<< history[history.size()-(pos)] << " status: "<< get_state(history_status[history_status.size()-(pos)]) << " status id: " << history_status[history_status.size() - pos] << endl;
+		cout<< history[history.size()-(pos)] << " status: "<< get_state(history_status[history_status.size()-(pos)]) << " status id: " << WEXITSTATUS(history_status[history_status.size() - pos]) << endl;
 }
