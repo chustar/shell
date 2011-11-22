@@ -204,7 +204,7 @@ void parser(string inputBuffer)
         if (!grammar_error){
 
             user_exec(commands,type);          // send vector command to user_exec.cpp   ***uncomment ***
-            //  validCommand(commands,type);
+              validCommand(commands,type);
 
         }
             commands.clear();    //flush content of command vector
