@@ -114,7 +114,8 @@ void launch_foreground(int index) {
             if(c) {
                 G_BG_FLAG = true;
                 user_exec(cmdV,tV );
-            }
+            	history.pop_back();
+			}
         } else { //indexing into background process
             //check if index is out of range
             if(index < 0 || index > (int)bg_process.size())
@@ -217,13 +218,23 @@ void store_history(vector<string> cmd) {
     history.push_back(c);
 }
 
+void store_status_cmd(int status) {
+	
+	history_status.push_back(status); //store history status	
+}
+
 void display_history() {
 
     vector<string>::iterator historyIter;
+    vector<int>::iterator stateIter;
     int count = 0;
-    for(historyIter = history.begin(); historyIter < history.end(); ++historyIter) {
-        cout<< count << ": " << *historyIter << endl;
+    for(historyIter = history.begin(), stateIter = history_status.begin(); historyIter < history.end(); ++historyIter, ++stateIter) {
+        cout<< count << ": " << *historyIter << " status: " << get_state(*stateIter) <<endl;
         count++;
     }
 }
 
+void display_exit_status(int pos) {
+	if(pos <= history.size())
+		cout<< history[history.size()-(pos)] << " status: "<< get_state(history_status[history_status.size()-(pos)]) << " status id: " << history_status[history_status.size() - pos] << endl;
+}

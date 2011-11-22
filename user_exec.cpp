@@ -41,7 +41,8 @@ int user_exec(vector<string> cmd, vector<char> types) {
 	}
 
 	check_bg_status();
- 	store_history(cmd);
+ 	if(cmd[0] != "")
+		store_history(cmd);
 	if(cmd.size() != 0 && cmd[0] != "") {
         for(cmdIter = cmd.begin(), typeIter = types.begin(); cmdIter < cmd.end(); ++cmdIter, ++typeIter) {
             if(*typeIter == 'T') {
@@ -55,14 +56,18 @@ int user_exec(vector<string> cmd, vector<char> types) {
 	}
     	if(fg) {
 			exit_pid = waitpid(child, &last_res, 0); //blocking wait for fg
-        } else {
+			if(cmd[0] != "") 
+				store_status_cmd(last_res); //store status of command
+	} else {
 			exit_pid = waitpid(child, &last_res, WUNTRACED | WCONTINUED | WNOHANG);
 			bg_status.push_back(last_res);
 			state = get_state(last_res);
-			cout<< exit_pid << " " << last_res << " " << state << " " << endl;
+			store_status_cmd(last_res);
+	//		cout<< exit_pid << " " << last_res << " " << state << " " << endl;
 			//take care of condition when we access waitpid twice
 			while(bg_status.size() > bg_process.size()) {
 				bg_status.pop_back();
+				//history_status.pop_back();//adjust
 			}
 		}
 
@@ -190,6 +195,7 @@ bool stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
 		foreground = false;
 	} else if(*cmdIter == "fg") {
 			wake_bg = true;
+			store_status_cmd(0);
 	} else if((*cmdIter).compare(0,1,"%") == 0) {
 	//	printf("woot: %s\n",(cmdIter));
 		pos = *cmdIter;
@@ -200,9 +206,11 @@ bool stream_exec(vector<string>::iterator &cmdIter, vector<string> &vec) {
 		wake_bg = true;
 	} else if(*cmdIter == "jobs") {
 		display_jobs();
+		store_status_cmd(0);//make jobs command valid
 		return false; //only display background jobs
 	} else if (*cmdIter == "history") {
-		display_history();
+		store_status_cmd(0);//make history command valid
+		display_history(); 
 		return false; //do not wait on these commands
 	}
        	cmdIter++;
