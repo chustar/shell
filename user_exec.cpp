@@ -400,11 +400,11 @@ void fork_exec_bg(string cmd, bool foreground, bool append) {
             close(err_fd[0]);
         }
 
-        if (stream_file[STREAM_OUT] != "") {
-            waitpid(out_pid, &res, 0);
-        }
         if (stream_file[STREAM_IN] != "") {
             waitpid(in_pid, &res, 0);
+        }
+        if (stream_file[STREAM_OUT] != "") {
+            waitpid(out_pid, &res, 0);
         }
         if (stream_file[ERR_OUT] != "") {
             waitpid(err_pid, &res, 0);
@@ -436,7 +436,7 @@ pid_t fork_out_proc(bool append) {
         char * buffer;
         buffer = new char[lSize];
         close(out_fd[1]);
-            cout << "PIPE OUTIN" << endl;
+        cout << "PIPE OUTIN" << endl;
         int len = read(out_fd[0], buffer, lSize);
             cout << "PIPE OUTIN" << endl;
         string out(buffer);
@@ -470,11 +470,10 @@ pid_t fork_in_proc() {
                 write(in_fd[1], line.c_str(), line.length());
             }
         }
-        int end = 3;
+        int end = 0;
         write(in_fd[1], &end, sizeof(end));
         file.close();
         close(in_fd[1]);
-        cout << "PIPE IN" << endl;
         exit(1);
     } else {
         return in_pid;
